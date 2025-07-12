@@ -7,6 +7,7 @@ function SearchPage() {
   const [searchResults, setSearchResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showAllCitations, setShowAllCitations] = useState(false);
   const navigate = useNavigate();
 
   const handleSearch = async (e) => {
@@ -15,6 +16,7 @@ function SearchPage() {
       setIsLoading(true);
       setError(null);
       setSearchResults(null);
+      setShowAllCitations(false);
 
       try {
         const response = await fetch('http://localhost:5001/api/search', {
@@ -48,7 +50,15 @@ function SearchPage() {
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
+    setShowAllCitations(false);
   };
+
+  const toggleCitations = () => {
+    setShowAllCitations(!showAllCitations);
+  };
+
+  const displayedCitations = searchResults?.citations?.slice(0, showAllCitations ? undefined : 5) || [];
+  const hasMoreCitations = searchResults?.citations?.length > 5;
 
   return (
     <div className="search-page">
@@ -81,44 +91,56 @@ function SearchPage() {
           </div>
         </form>
 
-        {/* Results Container */}
-        {(searchResults || error) && (
-          <div className="search-container">
-            {/* Results Popup */}
-            {searchResults && (
-              <div className="results-popup">
-                <div className="results-header">
-                  <h3>Books found for &quot;{searchResults.query}&quot;</h3>
-                  <p>From Wikipedia: {searchResults.page_title}</p>
-                  <button className="close-button" onClick={closeResults}>
-                    ×
-                  </button>
-                </div>
+        {/* Results Section */}
+        {searchResults && (
+          <div className="results-section">
+            <div className="results-header">
+              <button className="close-button" onClick={closeResults}>
+                ×
+              </button>
+            </div>
 
-                {searchResults.citations.length > 0 ? (
-                  <div className="citations-list">
-                    {searchResults.citations.map((citation, index) => (
-                      <div key={index} className="citation-item">
-                        <span className="citation-number">{index + 1}.</span>
-                        <span className="citation-text">{citation}</span>
-                      </div>
-                    ))}
+            {searchResults.citations.length > 0 ? (
+              <div className="citations-container">
+                {displayedCitations.map((citation, index) => (
+                  <div key={index} className="citation-item">
+                    <span className="citation-number">{index + 1}.</span>
+                    <span className="citation-text">{citation}</span>
                   </div>
-                ) : (
-                  <div className="no-results">
-                    <p>No books with ISBN numbers found for this topic.</p>
+                ))}
+                
+                {hasMoreCitations && !showAllCitations && (
+                  <div className="citations-expand">
+                    <span className="ellipsis">...</span>
+                    <button className="expand-button" onClick={toggleCitations}>
+                      Show All {searchResults.citations.length} Citations
+                    </button>
+                  </div>
+                )}
+                
+                {hasMoreCitations && showAllCitations && (
+                  <div className="citations-collapse">
+                    <button className="collapse-button" onClick={toggleCitations}>
+                      Show Less
+                    </button>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <div className="error-message">
-                <p>{error}</p>
-                <button onClick={() => setError(null)}>Dismiss</button>
+            ) : (
+              <div className="no-results">
+                <p>No books with ISBN numbers found for this topic.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="error-section">
+            <div className="error-message">
+              <p>{error}</p>
+              <button onClick={() => setError(null)}>Dismiss</button>
+            </div>
           </div>
         )}
       </main>
