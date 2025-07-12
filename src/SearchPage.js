@@ -57,7 +57,8 @@ function SearchPage() {
     setShowAllCitations(!showAllCitations);
   };
 
-  const displayedCitations = searchResults?.citations?.slice(0, showAllCitations ? undefined : 5) || [];
+  const displayedCitations =
+    searchResults?.citations?.slice(0, showAllCitations ? undefined : 5) || [];
   const hasMoreCitations = searchResults?.citations?.length > 5;
 
   return (
@@ -108,7 +109,7 @@ function SearchPage() {
                     <span className="citation-text">{citation}</span>
                   </div>
                 ))}
-                
+
                 {hasMoreCitations && !showAllCitations && (
                   <div className="citations-expand">
                     <span className="ellipsis">...</span>
@@ -117,10 +118,13 @@ function SearchPage() {
                     </button>
                   </div>
                 )}
-                
+
                 {hasMoreCitations && showAllCitations && (
                   <div className="citations-collapse">
-                    <button className="collapse-button" onClick={toggleCitations}>
+                    <button
+                      className="collapse-button"
+                      onClick={toggleCitations}
+                    >
                       Show Less
                     </button>
                   </div>
