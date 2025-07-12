@@ -16,17 +16,17 @@ function LandingPage() {
     background: `linear-gradient(rgba(87, 171, 223, 0.8), rgba(87, 171, 223, 0.8)), url(${libraryImage})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat'
+    backgroundRepeat: 'no-repeat',
   };
 
   const buttonStyle = {
     background: `linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url(${parchmentImage})`,
     backgroundSize: 'cover',
-    backgroundPosition: 'center'
+    backgroundPosition: 'center',
   };
 
-  const title = "Alexandria"; // 10 letters: A-l-e-x-a-n-d-r-i-a
-  
+  const title = 'Alexandria'; // 10 letters: A-l-e-x-a-n-d-r-i-a
+
   return (
     <div className="App" style={appStyle}>
       <header className="App-header">
@@ -37,7 +37,7 @@ function LandingPage() {
             </span>
           ))}
         </div>
-        <button 
+        <button
           className="explore-library-btn"
           style={buttonStyle}
           onClick={handleExploreLibrary}
@@ -49,4 +49,4 @@ function LandingPage() {
   );
 }
 
-export default LandingPage; 
+export default LandingPage;

@@ -1,11 +1,13 @@
 .search-page {
   min-height: 100vh;
-  background: linear-gradient(rgba(87, 171, 223, 0.8), rgba(87, 171, 223, 0.8)), url('./library.jpg');
+  background:
+    linear-gradient(rgba(87, 171, 223, 0.8), rgba(87, 171, 223, 0.8)),
+    url('./library.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   color: #2c1810;
-  font-family: "Almendra", serif;
+  font-family: 'Almendra', serif;
 }
 
 .search-header {
@@ -23,7 +25,7 @@
   border: 2px solid rgba(44, 24, 16, 0.3);
   padding: 0.75rem 1.5rem;
   border-radius: 25px;
-  font-family: "Almendra", serif;
+  font-family: 'Almendra', serif;
   font-size: 1rem;
   color: #2c1810;
   cursor: pointer;
@@ -39,7 +41,7 @@
 
 .search-title {
   font-size: 2.5rem;
-  color: #FFD500;
+  color: #ffd500;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   margin: 0;
   position: absolute;
@@ -81,7 +83,7 @@
   border: 2px solid rgba(44, 24, 16, 0.3);
   border-radius: 25px;
   font-size: 1.1rem;
-  font-family: "Almendra", serif;
+  font-family: 'Almendra', serif;
   background: rgba(255, 255, 255, 0.8);
   color: #2c1810;
   transition: all 0.2s ease;
@@ -99,13 +101,15 @@
 }
 
 .search-button {
-  background: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url('./parchment.jpg');
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)),
+    url('./parchment.jpg');
   background-size: cover;
   background-position: center;
   border: 2px solid rgba(44, 24, 16, 0.3);
   padding: 1rem 2rem;
   border-radius: 25px;
-  font-family: "Almendra", serif;
+  font-family: 'Almendra', serif;
   font-size: 1.1rem;
   font-weight: bold;
   color: #2c1810;
@@ -249,13 +253,12 @@
   padding: 0.5rem 1rem;
   border-radius: 5px;
   cursor: pointer;
-  font-family: "Almendra", serif;
+  font-family: 'Almendra', serif;
 }
 
 .error-message button:hover {
   background: rgba(255, 255, 255, 1);
 }
-
 
 @media (max-width: 768px) {
   .search-header {
@@ -263,15 +266,13 @@
     gap: 1rem;
     text-align: center;
   }
-  
+
   .search-input-wrapper {
     flex-direction: column;
   }
-  
+
   .search-container {
     padding: 2rem;
     margin: 1rem;
   }
-  
-
-} 
+}

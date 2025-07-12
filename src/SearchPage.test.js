@@ -31,7 +31,9 @@ describe('SearchPage Component', () => {
 
   test('renders search input', () => {
     render(<SearchPage />);
-    const searchInput = screen.getByPlaceholderText('Search for books, authors, or topics...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
     expect(searchInput).toBeInTheDocument();
   });
 
@@ -43,10 +45,12 @@ describe('SearchPage Component', () => {
 
   test('search input updates on change', () => {
     render(<SearchPage />);
-    const searchInput = screen.getByPlaceholderText('Search for books, authors, or topics...');
-    
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
+
     fireEvent.change(searchInput, { target: { value: 'test search' } });
-    
+
     expect(searchInput.value).toBe('test search');
   });
 
@@ -58,17 +62,19 @@ describe('SearchPage Component', () => {
         page_title: 'Test Page',
         citations: ['Test citation 1', 'Test citation 2'],
         count: 2,
-        status: 'success'
-      })
+        status: 'success',
+      }),
     });
 
     render(<SearchPage />);
-    const searchInput = screen.getByPlaceholderText('Search for books, authors, or topics...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
     const searchButton = screen.getByRole('button', { name: /search/i });
-    
+
     fireEvent.change(searchInput, { target: { value: 'test query' } });
     fireEvent.click(searchButton);
-    
+
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith('http://localhost:5001/api/search', {
         method: 'POST',
@@ -81,31 +87,37 @@ describe('SearchPage Component', () => {
   });
 
   test('displays loading state during search', async () => {
-    fetch.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+    fetch.mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 100))
+    );
 
     render(<SearchPage />);
-    const searchInput = screen.getByPlaceholderText('Search for books, authors, or topics...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
     const searchButton = screen.getByRole('button', { name: /search/i });
-    
+
     fireEvent.change(searchInput, { target: { value: 'test query' } });
     fireEvent.click(searchButton);
-    
+
     expect(screen.getByText('Searching...')).toBeInTheDocument();
   });
 
   test('displays error message on API failure', async () => {
     fetch.mockResolvedValueOnce({
       ok: false,
-      json: async () => ({ error: 'Search failed' })
+      json: async () => ({ error: 'Search failed' }),
     });
 
     render(<SearchPage />);
-    const searchInput = screen.getByPlaceholderText('Search for books, authors, or topics...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
     const searchButton = screen.getByRole('button', { name: /search/i });
-    
+
     fireEvent.change(searchInput, { target: { value: 'test query' } });
     fireEvent.click(searchButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Search failed')).toBeInTheDocument();
     });
@@ -115,14 +127,18 @@ describe('SearchPage Component', () => {
     fetch.mockRejectedValueOnce(new Error('Network error'));
 
     render(<SearchPage />);
-    const searchInput = screen.getByPlaceholderText('Search for books, authors, or topics...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
     const searchButton = screen.getByRole('button', { name: /search/i });
-    
+
     fireEvent.change(searchInput, { target: { value: 'test query' } });
     fireEvent.click(searchButton);
-    
+
     await waitFor(() => {
-      expect(screen.getByText('Network error. Please try again.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Network error. Please try again.')
+      ).toBeInTheDocument();
     });
   });
-}); 
+});
