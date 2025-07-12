@@ -47,36 +47,6 @@ function SearchPage() {
               </button>
             </div>
           </form>
-          
-          <div className="search-suggestions">
-            <h3>Popular Searches</h3>
-            <div className="suggestion-tags">
-              <button 
-                className="suggestion-tag"
-                onClick={() => setSearchQuery('Ancient History')}
-              >
-                Ancient History
-              </button>
-              <button 
-                className="suggestion-tag"
-                onClick={() => setSearchQuery('Philosophy')}
-              >
-                Philosophy
-              </button>
-              <button 
-                className="suggestion-tag"
-                onClick={() => setSearchQuery('Mathematics')}
-              >
-                Mathematics
-              </button>
-              <button 
-                className="suggestion-tag"
-                onClick={() => setSearchQuery('Astronomy')}
-              >
-                Astronomy
-              </button>
-            </div>
-          </div>
         </div>
       </main>
     </div>
