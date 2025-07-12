@@ -58,15 +58,15 @@
 .letter-9 { transform: rotate(40deg) translateY(-120px) translateX(35vw); }
 
 .explore-library-btn {
-  background: white;
-  color: #333;
+  color: #2c1810;
   border: none;
   font-size: 1.3rem;
   font-weight: bold;
   font-family: "Almendra", serif;
   cursor: pointer;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
+  /* Parchment effect - subtle drop shadow for depth */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.156s ease;
   animation: fadeIn 2s ease-in;
   position: absolute;
   z-index: 2;
@@ -81,19 +81,28 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, 50px);
-  border: 3px solid rgba(255, 213, 0, 0.3);
+  /* Parchment border effect */
+  border: 2px solid rgba(44, 24, 16, 0.3);
+  /* Text shadow for better readability on parchment */
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .explore-library-btn:hover {
+  /* Light passing over effect - very subtle brightness increase */
+  filter: brightness(1.02) contrast(1.01);
   transform: translate(-50%, 47px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-  background: #f8f8f8;
-  border-color: rgba(255, 213, 0, 0.5);
+  /* Enhanced shadow for "activation" effect */
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 6px 12px rgba(0, 0, 0, 0.3);
+  border-color: rgba(44, 24, 16, 0.5);
 }
 
 .explore-library-btn:active {
-  transform: translate(-50%, 50px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  /* Pressed parchment effect - remove shadow and darken */
+  transform: translate(-50%, 53px);
+  box-shadow: none;
+  /* Dark overlay to simulate being pressed down */
+  filter: brightness(0.8) contrast(1.2);
+  border-color: rgba(44, 24, 16, 0.7);
 }
 
 @keyframes fadeIn {

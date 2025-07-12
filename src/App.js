@@ -1,6 +1,7 @@
 import React from 'react';
 import './App.css';
 import libraryImage from './library.jpg';
+import parchmentImage from './parchment.jpg';
 
 function App() {
   const handleExploreLibrary = () => {
@@ -13,6 +14,12 @@ function App() {
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat'
+  };
+
+  const buttonStyle = {
+    background: `linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url(${parchmentImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
   };
 
   const title = "Alexandria"; // 10 letters: A-l-e-x-a-n-d-r-i-a
@@ -29,6 +36,7 @@ function App() {
         </div>
         <button 
           className="explore-library-btn"
+          style={buttonStyle}
           onClick={handleExploreLibrary}
         >
           Explore the Library
