@@ -71,3 +71,45 @@ npm run dev          # Start both services
 - Backend: Flask with JSON API responses
 - Both services can run simultaneously for development
 - Use `Ctrl+C` to stop both services when using the startup script
+
+## Testing
+
+### Frontend Tests
+```bash
+npm test                    # Run tests in watch mode
+npm run test:coverage      # Run tests with coverage report
+```
+
+### Backend Tests
+```bash
+pytest                     # Run Python tests
+pytest --cov=app          # Run tests with coverage
+```
+
+### Code Quality
+```bash
+npm run lint              # Run ESLint
+npm run lint:fix          # Fix ESLint issues
+npm run format            # Format code with Prettier
+npm run format:check      # Check code formatting
+npm run ci                # Run all checks (format, lint, test)
+```
+
+## CI/CD
+
+The project uses GitHub Actions for continuous integration:
+
+- **Triggers**: Runs on pull requests and pushes to main/develop branches
+- **Frontend Checks**: 
+  - Code formatting (Prettier)
+  - Linting (ESLint)
+  - Unit tests with coverage
+- **Backend Checks**:
+  - Code formatting (Black)
+  - Linting (Flake8)
+  - Unit tests with coverage
+- **Build**: Creates production build artifacts
+
+### Coverage Requirements
+- Frontend: 80% coverage threshold
+- Backend: 80% coverage threshold
