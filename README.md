@@ -74,17 +74,48 @@ npm run dev          # Start both services
 
 ## Testing
 
-### Frontend Tests
+### Quick Test Run
+```bash
+./run_tests.sh            # Run all tests (backend, frontend, integration)
+```
+
+### Individual Test Suites
+
+#### Frontend Tests (React)
 ```bash
 npm test                    # Run tests in watch mode
 npm run test:coverage      # Run tests with coverage report
 ```
 
-### Backend Tests
+#### Backend Tests (Python)
 ```bash
-pytest                     # Run Python tests
-pytest --cov=app          # Run tests with coverage
+python -m pytest test_app.py -v    # Run backend tests with verbose output
+python -m pytest test_app.py --cov=app  # Run tests with coverage
 ```
+
+### Test Coverage
+
+The test suite includes:
+
+#### Backend Tests (`test_app.py`)
+- **API Endpoint Tests**: Health check, home endpoint, search endpoint
+- **Wikipedia Integration Tests**: Search, content retrieval, citation extraction
+- **Error Handling Tests**: Missing queries, network errors, API failures
+- **Unit Tests**: Individual function testing with mocked dependencies
+- **Integration Tests**: Real API calls (when backend is running)
+
+#### Frontend Tests (`src/SearchPage.test.js`)
+- **Component Rendering**: Initial render, form elements, navigation
+- **Search Functionality**: Form submission, API calls, loading states
+- **Results Display**: Popup rendering, citation numbering, scroll behavior
+- **Error Handling**: Network errors, API errors, user feedback
+- **User Interactions**: Button clicks, form validation, navigation
+
+#### Test Placeholders
+Some tests include TODO sections for you to fill in:
+- **Specific Citations**: Add expected citations for "Guy Fawkes", "Philosophy", "Mathematics"
+- **Edge Cases**: Test special characters, long queries, non-English pages
+- **Integration Scenarios**: Real API testing with different topics
 
 ### Code Quality
 ```bash
