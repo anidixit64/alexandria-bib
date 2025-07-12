@@ -4,7 +4,6 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import re
-import json
 
 app = Flask(__name__)
 CORS(app)
@@ -124,16 +123,14 @@ def extract_book_citations(html_content):
             text = element.get_text()
 
             # Check if this citation contains an ISBN
-            if re.search(
-                r"ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+",
-                text,
-                re.IGNORECASE,
-            ):
+            isbn_pattern = r"ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+"
+            if re.search(isbn_pattern, text, re.IGNORECASE):
                 # Clean up the citation text
                 citation = re.sub(r"\s+", " ", text).strip()
 
                 # Strip citation markers like "^ a b c d" from the beginning
-                # Also strip leading commas and whitespace that might be left after removing markers
+                # Also strip leading commas and whitespace that might be left after
+                # removing markers
                 citation = re.sub(r"^\^[\s\w]+", "", citation).strip()
                 citation = re.sub(r"^,\s*", "", citation).strip()
 
