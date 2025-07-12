@@ -1,0 +1,139 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #FFD500;
+  position: relative;
+  overflow: hidden;
+}
+
+.App-header {
+  font-size: 4rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 1.5s ease-in;
+  margin-bottom: 2rem;
+}
+
+.curved-text {
+  font-family: "Almendra", serif;
+  font-weight: 700;
+  font-style: normal;
+  color: #FFD500;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 1.5s ease-in;
+  margin-bottom: 3rem;
+  position: relative;
+  width: 100vw;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -200px;
+}
+
+/* Individual letter styling for arc effect */
+.curved-text span {
+  position: absolute;
+  transform-origin: center 200px;
+  font-size: 8rem;
+  color: #FFD500;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+/* Position each letter along the semi-circular arc - 10 letters with equal spacing */
+.letter-0 { transform: rotate(-40deg) translateY(-120px) translateX(-35vw); }
+.letter-1 { transform: rotate(-31.11deg) translateY(-110px) translateX(-27.78vw); }
+.letter-2 { transform: rotate(-22.22deg) translateY(-100px) translateX(-20.56vw); }
+.letter-3 { transform: rotate(-13.33deg) translateY(-90px) translateX(-13.33vw); }
+.letter-4 { transform: rotate(-4.44deg) translateY(-80px) translateX(-6.11vw); }
+.letter-5 { transform: rotate(4.44deg) translateY(-80px) translateX(6.11vw); }
+.letter-6 { transform: rotate(13.33deg) translateY(-90px) translateX(13.33vw); }
+.letter-7 { transform: rotate(22.22deg) translateY(-100px) translateX(20.56vw); }
+.letter-8 { transform: rotate(31.11deg) translateY(-110px) translateX(27.78vw); }
+.letter-9 { transform: rotate(40deg) translateY(-120px) translateX(35vw); }
+
+.explore-library-btn {
+  background: white;
+  color: #333;
+  border: none;
+  font-size: 1.3rem;
+  font-weight: bold;
+  font-family: "Almendra", serif;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  animation: fadeIn 2s ease-in;
+  position: absolute;
+  z-index: 2;
+  /* Perfect circle shape */
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Center under the title arc */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, 50px);
+  border: 3px solid rgba(255, 213, 0, 0.3);
+}
+
+.explore-library-btn:hover {
+  transform: translate(-50%, 47px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  background: #f8f8f8;
+  border-color: rgba(255, 213, 0, 0.5);
+}
+
+.explore-library-btn:active {
+  transform: translate(-50%, 50px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1 {
+  margin: 0;
+  font-family: "Almendra", serif;
+  letter-spacing: 2px;
+}
+
+/* Font utility classes */
+.almendra-regular {
+  font-family: "Almendra", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.almendra-bold {
+  font-family: "Almendra", serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.almendra-regular-italic {
+  font-family: "Almendra", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.almendra-bold-italic {
+  font-family: "Almendra", serif;
+  font-weight: 700;
+  font-style: italic;
+} 
