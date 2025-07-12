@@ -21,7 +21,7 @@ describe('App Component', () => {
   test('renders Alexandria title in curved text', () => {
     render(<App />);
     const letters = 'Alexandria'.split('');
-    letters.forEach(letter => {
+    letters.forEach((letter) => {
       const elements = screen.getAllByText(letter);
       expect(elements.length).toBeGreaterThan(0);
     });
