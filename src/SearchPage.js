@@ -60,64 +60,67 @@ function SearchPage() {
       </header>
 
       <main className="search-main">
-        <div className="search-container">
-          <form onSubmit={handleSearch} className="search-form">
-            <div className="search-input-wrapper">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for books, authors, or topics..."
-                className="search-input"
-                autoFocus
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                className="search-button"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Searching...' : 'Search'}
-              </button>
-            </div>
-          </form>
+        <form onSubmit={handleSearch} className="search-form">
+          <div className="search-input-wrapper">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for books, authors, or topics..."
+              className="search-input"
+              autoFocus
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              className="search-button"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+        </form>
 
-          {/* Results Popup */}
-          {searchResults && (
-            <div className="results-popup">
-              <div className="results-header">
-                <h3>Books found for &quot;{searchResults.query}&quot;</h3>
-                <p>From Wikipedia: {searchResults.page_title}</p>
-                <button className="close-button" onClick={closeResults}>
-                  ×
-                </button>
+        {/* Results Container */}
+        {(searchResults || error) && (
+          <div className="search-container">
+            {/* Results Popup */}
+            {searchResults && (
+              <div className="results-popup">
+                <div className="results-header">
+                  <h3>Books found for &quot;{searchResults.query}&quot;</h3>
+                  <p>From Wikipedia: {searchResults.page_title}</p>
+                  <button className="close-button" onClick={closeResults}>
+                    ×
+                  </button>
+                </div>
+
+                {searchResults.citations.length > 0 ? (
+                  <div className="citations-list">
+                    {searchResults.citations.map((citation, index) => (
+                      <div key={index} className="citation-item">
+                        <span className="citation-number">{index + 1}.</span>
+                        <span className="citation-text">{citation}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-results">
+                    <p>No books with ISBN numbers found for this topic.</p>
+                  </div>
+                )}
               </div>
+            )}
 
-              {searchResults.citations.length > 0 ? (
-                <div className="citations-list">
-                  {searchResults.citations.map((citation, index) => (
-                    <div key={index} className="citation-item">
-                      <span className="citation-number">{index + 1}.</span>
-                      <span className="citation-text">{citation}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="no-results">
-                  <p>No books with ISBN numbers found for this topic.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="error-message">
-              <p>{error}</p>
-              <button onClick={() => setError(null)}>Dismiss</button>
-            </div>
-          )}
-        </div>
+            {/* Error Message */}
+            {error && (
+              <div className="error-message">
+                <p>{error}</p>
+                <button onClick={() => setError(null)}>Dismiss</button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
