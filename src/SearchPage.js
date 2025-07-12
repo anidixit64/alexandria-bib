@@ -86,7 +86,7 @@ function SearchPage() {
           {searchResults && (
             <div className="results-popup">
               <div className="results-header">
-                <h3>Books found for "{searchResults.query}"</h3>
+                <h3>Books found for &quot;{searchResults.query}&quot;</h3>
                 <p>From Wikipedia: {searchResults.page_title}</p>
                 <button className="close-button" onClick={closeResults}>
                   ×

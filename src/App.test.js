@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
 
@@ -21,7 +21,7 @@ describe('App Component', () => {
   test('renders Alexandria title in curved text', () => {
     render(<App />);
     const letters = 'Alexandria'.split('');
-    letters.forEach((letter) => {
+    letters.forEach(letter => {
       const elements = screen.getAllByText(letter);
       expect(elements.length).toBeGreaterThan(0);
     });
