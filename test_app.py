@@ -189,11 +189,46 @@ class TestType1Parser(unittest.TestCase):
         """Test parsing Sigurðsson citation with editor and edition"""
         test_citation = "Sigurðsson, Haraldur, ed. (2015). The Encyclopedia of Volcanoes (2 ed.). Academic Press. ISBN 978-0-12-385938-9"
         result = self.parser(test_citation)
-        print(f"DEBUG Sigurðsson: {result}")  # Debug print
         self.assertEqual(result["authors"], "Sigurðsson, Haraldur, ed.")
         self.assertEqual(result["year"], "2015")
         self.assertEqual(result["title"], "The Encyclopedia of Volcanoes (2 ed.)")
         self.assertEqual(result["isbn"], "978-0-12-385938-9")
+
+    def test_lackey_salmon_citation(self):
+        """Test parsing Lackey citation with multiple editors"""
+        test_citation = "Lackey, Robert; Lach, Denise; Duncan, Sally, eds. (2006). Salmon 2100: The Future of Wild Pacific Salmon. Bethesda, MD: American Fisheries Society. p. 629. ISBN 1-888569-78-6."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Lackey, Robert; Lach, Denise; Duncan, Sally, eds.")
+        self.assertEqual(result["year"], "2006")
+        self.assertEqual(result["title"], "Salmon 2100: The Future of Wild Pacific Salmon")
+        self.assertEqual(result["isbn"], "1-888569-78-6")
+
+    def test_kant_groundwork_citation(self):
+        """Test parsing Kant citation with simple format"""
+        test_citation = "Kant, Immanuel (1964). Groundwork of the Metaphysic of Morals. Harper and Row Publishers, Inc. ISBN 978-0-06-131159-8."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Kant, Immanuel")
+        self.assertEqual(result["year"], "1964")
+        self.assertEqual(result["title"], "Groundwork of the Metaphysic of Morals")
+        self.assertEqual(result["isbn"], "978-0-06-131159-8")
+
+    def test_montgomery_katy_perry_citation(self):
+        """Test parsing Montgomery citation with via Google Books"""
+        test_citation = "Montgomery, Alice (2011). Katy Perry – The Unofficial Biography. Penguin. ISBN 9780718158248 – via Google Books."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Montgomery, Alice")
+        self.assertEqual(result["year"], "2011")
+        self.assertEqual(result["title"], "Katy Perry – The Unofficial Biography")
+        self.assertEqual(result["isbn"], "9780718158248")
+
+    def test_alofsin_frank_lloyd_wright_citation(self):
+        """Test parsing Alofsin citation with multiple books (should only parse first)"""
+        test_citation = "Alofsin, Anthony (1993). Frank Lloyd Wright – the Lost Years, 1910–1922: A Study of Influence. University of Chicago Press. p. 359. ISBN 0-226-01366-9; Hersey, George (2000). Architecture and Geometry in the Age of the Baroque. University of Chicago Press. p. 205. ISBN 0-226-32783-3."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Alofsin, Anthony")
+        self.assertEqual(result["year"], "1993")
+        self.assertEqual(result["title"], "Frank Lloyd Wright – the Lost Years, 1910–1922: A Study of Influence")
+        self.assertEqual(result["isbn"], "0-226-01366-9")
 
 
 class TestType3Parser(unittest.TestCase):
@@ -253,6 +288,37 @@ class TestType3Parser(unittest.TestCase):
         self.assertEqual(result["chapter_title"], "Geomythology, theodicy, and the continuing relevance of religious worldviews on responses to volcanic eruptions")
         self.assertEqual(result["book_title"], "Living under the shadow: The cultural impacts of volcanic eruptions")
         self.assertEqual(result["isbn"], "9781315425177")
+
+
+class TestType2Parser(unittest.TestCase):
+    """Test the type_2_parser function for citations with standalone years (not in parentheses)"""
+
+    def setUp(self):
+        from app import type_2_parser
+        self.parser = type_2_parser
+
+    def test_parser_exists(self):
+        """Test that the type_2_parser function exists and is callable"""
+        self.assertTrue(callable(self.parser))
+
+    def test_barbara_triggs_wombat_citation(self):
+        """Test parsing Barbara Triggs citation with standalone year"""
+        test_citation = "Barbara Triggs, The Wombat: Common Wombats in Australia, University of New South Wales Press, 1996, ISBN 0-86840-263-X."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Barbara Triggs")
+        self.assertEqual(result["year"], "1996")
+        self.assertEqual(result["title"], "The Wombat: Common Wombats in Australia")
+        self.assertEqual(result["isbn"], "0-86840-263-X")
+
+    def test_kennedy_civil_war_citation(self):
+        """Test parsing Kennedy citation with editor and edition"""
+        test_citation = "Kennedy, Frances H., ed., The Civil War Battlefield Guide, 2nd ed., Houghton Mifflin Co., 1998, ISBN 978-0-395-74012-5."
+        result = self.parser(test_citation)
+        print(f"DEBUG Kennedy: {result}")  # Debug print
+        self.assertEqual(result["authors"], "Kennedy, Frances H., ed.")
+        self.assertEqual(result["year"], "1998")
+        self.assertEqual(result["title"], "The Civil War Battlefield Guide, 2nd ed.")
+        self.assertEqual(result["isbn"], "978-0-395-74012-5")
 
 
 class TestCitationCleaning(unittest.TestCase):

@@ -476,6 +476,99 @@ def type_3_parser(citation):
     return result
 
 
+def type_2_parser(citation):
+    """
+    Parse Type II citations that have standalone years (not in parentheses).
+    Extracts authors, year, title, and ISBN from the citation.
+    
+    Format: Authors, Title, Publisher, Year, ISBN.
+    
+    Args:
+        citation (str): A citation string that contains standalone years
+        
+    Returns:
+        dict: Parsed citation data with authors, year, title, isbn, and remaining_text fields
+    """
+    if not citation:
+        return {"authors": None, "year": None, "title": None, "isbn": None, "remaining_text": citation}
+    
+    # Initialize result
+    result = {"authors": None, "year": None, "title": None, "isbn": None, "remaining_text": citation}
+    
+    # Extract ISBN first
+    isbn_pattern = r'ISBN\s+([0-9\-X]+)'
+    isbn_match = re.search(isbn_pattern, citation, re.IGNORECASE)
+    
+    if isbn_match:
+        result["isbn"] = isbn_match.group(1)
+        # Remove the entire ISBN from the citation
+        isbn_full = isbn_match.group(0)
+        citation = citation.replace(isbn_full, "").strip()
+    
+    # Extract year (4-digit number)
+    year_pattern = r'\b(19|20)\d{2}\b'
+    year_match = re.search(year_pattern, citation)
+    
+    if year_match:
+        result["year"] = year_match.group(0)
+        year_start = year_match.start()
+        year_end = year_match.end()
+        
+        # Find publisher keywords to determine title boundary
+        publisher_keywords = [
+            'press', 'publishing', 'publisher', 'university', 'blackwell', 'princeton', 'cambridge', 'oxford', 'harvard', 'yale', 'penguin', 'random house', 'simon & schuster', 'wiley', 'springer', 'elsevier', 'macmillan', 'routledge', 'academic press', 'houghton mifflin', 'co.', 'company', 'ltd', 'inc'
+        ]
+        
+        # Look for publisher before the year
+        text_before_year = citation[:year_start]
+        publisher_found = False
+        title_end = year_start
+        
+        for keyword in publisher_keywords:
+            # Look for the keyword followed by a comma
+            pattern = rf',\s*[^,]*{re.escape(keyword)}[^,]*'
+            match = re.search(pattern, text_before_year, re.IGNORECASE)
+            if match:
+                title_end = match.start()
+                publisher_found = True
+                break
+        
+        # Extract authors - look for the last 'ed.,' (with optional spaces) before the year
+        ed_match = list(re.finditer(r'ed\.,', citation[:title_end], re.IGNORECASE))
+        if ed_match:
+            last_ed = ed_match[-1]
+            authors = citation[:last_ed.end()].strip()
+            authors = re.sub(r',\s*$', '', authors)
+            title_start = last_ed.end()
+        else:
+            # No 'ed.,' found, use last comma before the title as author/title boundary
+            comma_indices = [m.start() for m in re.finditer(',', citation[:title_end])]
+            if comma_indices:
+                last_author_comma = comma_indices[-1]
+                authors = citation[:last_author_comma].strip()
+                authors = re.sub(r',\s*$', '', authors)
+                title_start = last_author_comma + 1
+            else:
+                authors = citation[:title_end].strip()
+                authors = re.sub(r',\s*$', '', authors)
+                title_start = title_end
+        result["authors"] = authors
+        # Extract title from title_start to title_end
+        title = citation[title_start:title_end].strip()
+        # Remove trailing comma if present
+        title = re.sub(r',\s*$', '', title).strip()
+        result["title"] = title
+        # Remaining text is everything after the year
+        result["remaining_text"] = citation[year_end:].strip()
+        # Remove leading comma and clean up
+        result["remaining_text"] = re.sub(r'^[\.,\s]+', '', result["remaining_text"])
+    else:
+        # No year found, return as is
+        result["remaining_text"] = citation
+    
+    return result
+
+
 @app.route("/")
 def home():
     return jsonify({"message": "Alexandria API is running", "status": "success"})
