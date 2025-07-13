@@ -313,13 +313,15 @@ def type_1_parser(citation):
         if year_match:
             result["year"] = year_match.group(0)
 
-        # Extract title from after the parentheses to the next period, comma, or before publisher/ISBN
+        # Extract title from after the parentheses to the next period, comma,
+        # or before publisher/ISBN
         text_after_date = citation[date_end:].strip()
         if text_after_date.startswith("."):
             text_after_date = text_after_date[1:].strip()
         if text_after_date.startswith(","):
             text_after_date = text_after_date[1:].strip()
-        # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived', or a comma before publisher/ISBN
+        # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived',
+        # or a comma before publisher/ISBN
         publisher_keywords = [
             "press",
             "publishing",
@@ -424,13 +426,15 @@ def type_3_parser(citation):
     Parse Type III citations that contain quoted chapter titles.
     Extracts chapter authors, year, chapter title, book authors, book title, and ISBN.
 
-    Format: Chapter Authors (year). 'Chapter Title'. In Book Authors (eds.). Book Title. Publisher. ISBN.
+    Format: Chapter Authors (year). 'Chapter Title'. In Book Authors (eds.).
+    Book Title. Publisher. ISBN.
 
     Args:
         citation (str): A citation string that contains quoted chapter titles
 
     Returns:
-        dict: Parsed citation data with chapter_authors, book_authors, year, chapter_title, book_title, isbn, and remaining_text fields
+        dict: Parsed citation data with chapter_authors, book_authors, year,
+        chapter_title, book_title, isbn, and remaining_text fields
     """
     if not citation:
         return {
@@ -598,120 +602,108 @@ def type_2_parser(citation):
     year_pattern = r"\b(19|20)\d{2}\b"
     year_match = re.search(year_pattern, citation)
 
+    # Always define author_year_match
+    author_year_pattern = r"^([^\(]+)\s*\(\d{4}\)\."
+    author_year_match = re.match(author_year_pattern, citation)
+
     if year_match:
         result["year"] = year_match.group(0)
         year_start = year_match.start()
         year_end = year_match.end()
 
-        # Find publisher keywords to determine title boundary
         publisher_keywords = [
-            "press",
-            "publishing",
-            "publisher",
-            "university",
-            "blackwell",
-            "princeton",
-            "cambridge",
-            "oxford",
-            "harvard",
-            "yale",
-            "penguin",
-            "random house",
-            "simon & schuster",
-            "wiley",
-            "springer",
-            "elsevier",
-            "macmillan",
-            "routledge",
-            "academic press",
-            "houghton mifflin",
-            "co.",
-            "company",
-            "ltd",
-            "inc",
+            "press", "publishing", "publisher", "university", "blackwell", "princeton", "cambridge", "oxford", "harvard", "yale", "penguin", "random house", "simon & schuster", "wiley", "springer", "elsevier", "macmillan", "routledge", "academic press", "london & new york", "london", "new york", "isbn", "retrieved", "archived",
         ]
-
-        # Look for publisher before the year
         text_before_year = citation[:year_start]
-        publisher_found = False
         title_end = year_start
-
         for keyword in publisher_keywords:
-            # Look for the keyword followed by a comma
             pattern = rf",\s*[^,]*{re.escape(keyword)}[^,]*"
             match = re.search(pattern, text_before_year, re.IGNORECASE)
             if match:
                 title_end = match.start()
-                publisher_found = True
                 break
 
         # Check if this is a "Title (year) by Author" format
-        by_pattern = r"by\s+([^\(]+)\([^\)]+\)"
+        by_pattern = r"by\s+([^\(]+?)\s*\([^\)]+\)"
         by_match = re.search(by_pattern, citation, re.IGNORECASE)
         if by_match:
-            # This is "Title (year) by Author (Publisher)" format
             author_part = by_match.group(1).strip()
-            # Extract just the author name (before any parentheses)
             author = re.sub(r"\s*\([^\)]*\)\s*$", "", author_part).strip()
-            # Remove the author part from the citation
             citation_without_author = citation[: by_match.start()].strip()
-            # Extract title from the beginning to before the year
             title = citation_without_author[:year_start].strip()
-            # Remove trailing comma if present
             title = re.sub(r",\s*$", "", title).strip()
+            title = re.sub(r"\s*\(\s*$", "", title).strip()
             result["authors"] = author
             result["title"] = title
             result["remaining_text"] = citation[year_end : by_match.start()].strip()
-            result["remaining_text"] = re.sub(
-                r"^[\.,\s]+", "", result["remaining_text"]
-            )
+            result["remaining_text"] = re.sub(r"^[\.,\s]+", "", result["remaining_text"])
+        elif author_year_match:
+            # Sorensen style: Author (year). Title. Publisher.
+            authors = author_year_match.group(1).strip()
+            title_start = author_year_match.end()
+            after_year = citation[title_start:]
+            # Find the last period before 'Press', 'Publisher', or 'ISBN'
+            pub_keywords = ['Press', 'Publisher', 'ISBN']
+            last_period = -1
+            for kw in pub_keywords:
+                idx = after_year.find(kw)
+                if idx != -1:
+                    # Find the last period before this keyword
+                    period_idx = after_year.rfind('.', 0, idx)
+                    if period_idx > last_period:
+                        last_period = period_idx
+            if last_period != -1:
+                title = after_year[:last_period].strip()
+                remaining = after_year[last_period+1:].strip()
+            else:
+                # fallback: up to the last period
+                period_idx = after_year.rfind('.')
+                if period_idx != -1:
+                    title = after_year[:period_idx].strip()
+                    remaining = after_year[period_idx+1:].strip()
+                else:
+                    title = after_year.strip()
+                    remaining = ""
+            result["authors"] = authors
+            result["title"] = title
+            result["remaining_text"] = remaining
         else:
             # Standard format: Authors, Title, Publisher, Year
-            # Extract authors - look for the last 'ed.,' (with optional spaces) before the year
             ed_match = list(re.finditer(r"ed\.,", citation[:title_end], re.IGNORECASE))
             if ed_match:
-                last_ed = ed_match[-1]
-                authors = citation[: last_ed.end()].strip()
+                first_ed = ed_match[0]
+                authors = citation[:first_ed.end()].strip()
                 authors = re.sub(r",\s*$", "", authors)
-                title_start = last_ed.end()
+                rest = citation[first_ed.end():title_end].lstrip(', ')
+                parts = [p.strip() for p in rest.split(',') if p.strip()]
+                if len(parts) >= 2:
+                    title = ', '.join(parts[:2])
+                elif parts:
+                    title = parts[0]
+                else:
+                    title = ''
+                result["authors"] = authors
+                result["title"] = title
             else:
-                # No 'ed.,' found, use last comma before the title as author/title boundary
-                comma_indices = [
-                    m.start() for m in re.finditer(",", citation[:title_end])
-                ]
+                comma_indices = [m.start() for m in re.finditer(",", citation[:title_end])]
                 if comma_indices:
                     last_author_comma = comma_indices[-1]
                     authors = citation[:last_author_comma].strip()
                     authors = re.sub(r",\s*$", "", authors)
                     title_start = last_author_comma + 1
+                    result["authors"] = authors
+                    result["title"] = citation[title_start:title_end].strip()
                 else:
-                    # If no comma found, check if this is "Author (year). Title" format
-                    author_year_pattern = r"^([^\(]+)\s*\(\d{4}\)\."
-                    author_year_match = re.match(author_year_pattern, citation)
-                    if author_year_match:
-                        authors = author_year_match.group(1).strip()
-                        title_start = author_year_match.end()
-                    else:
-                        # Fallback: use everything before year as author
-                        authors = citation[:year_start].strip()
-                        authors = re.sub(r",\s*$", "", authors)
-                        title_start = year_end
-            result["authors"] = authors
-            # Extract title from title_start to title_end
-            title = citation[title_start:title_end].strip()
-            # Remove trailing comma if present
-            title = re.sub(r",\s*$", "", title).strip()
-            # Remove trailing parenthesis and whitespace
-            title = re.sub(r"\s*\([^\)]*\)\s*$", "", title).strip()
-            result["title"] = title
-            # Remaining text is everything after the year
+                    authors = citation[:year_start].strip()
+                    authors = re.sub(r",\s*$", "", authors)
+                    title_start = year_end
+                    result["authors"] = authors
+                    result["title"] = citation[title_start:title_end].strip()
+        # Remaining text is everything after the year
+        if not result["remaining_text"]:
             result["remaining_text"] = citation[year_end:].strip()
-            # Remove leading comma and clean up
-            result["remaining_text"] = re.sub(
-                r"^[\.,\s]+", "", result["remaining_text"]
-            )
+            result["remaining_text"] = re.sub(r"^[\.,\s]+", "", result["remaining_text"])
     else:
-        # No year found, return as is
         result["remaining_text"] = citation
 
     return result
