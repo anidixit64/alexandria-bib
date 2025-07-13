@@ -324,7 +324,7 @@ def type_1_parser(citation):
         bracket_year_pattern = r"^\s*\[\d{4}\]\s*\.?\s*"
         bracket_match = re.match(bracket_year_pattern, text_after_date)
         if bracket_match:
-            text_after_date = text_after_date[bracket_match.end():].strip()
+            text_after_date = text_after_date[bracket_match.end() :].strip()
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived',
         # or a comma before publisher/ISBN
         publisher_keywords = [
@@ -617,7 +617,31 @@ def type_2_parser(citation):
         year_end = year_match.end()
 
         publisher_keywords = [
-            "press", "publishing", "publisher", "university", "blackwell", "princeton", "cambridge", "oxford", "harvard", "yale", "penguin", "random house", "simon & schuster", "wiley", "springer", "elsevier", "macmillan", "routledge", "academic press", "london & new york", "london", "new york", "isbn", "retrieved", "archived",
+            "press",
+            "publishing",
+            "publisher",
+            "university",
+            "blackwell",
+            "princeton",
+            "cambridge",
+            "oxford",
+            "harvard",
+            "yale",
+            "penguin",
+            "random house",
+            "simon & schuster",
+            "wiley",
+            "springer",
+            "elsevier",
+            "macmillan",
+            "routledge",
+            "academic press",
+            "london & new york",
+            "london",
+            "new york",
+            "isbn",
+            "retrieved",
+            "archived",
         ]
         text_before_year = citation[:year_start]
         title_end = year_start
@@ -641,31 +665,33 @@ def type_2_parser(citation):
             result["authors"] = author
             result["title"] = title
             result["remaining_text"] = citation[year_end : by_match.start()].strip()
-            result["remaining_text"] = re.sub(r"^[\.,\s]+", "", result["remaining_text"])
+            result["remaining_text"] = re.sub(
+                r"^[\.,\s]+", "", result["remaining_text"]
+            )
         elif author_year_match:
             # Sorensen style: Author (year). Title. Publisher.
             authors = author_year_match.group(1).strip()
             title_start = author_year_match.end()
             after_year = citation[title_start:]
             # Find the last period before 'Press', 'Publisher', or 'ISBN'
-            pub_keywords = ['Press', 'Publisher', 'ISBN']
+            pub_keywords = ["Press", "Publisher", "ISBN"]
             last_period = -1
             for kw in pub_keywords:
                 idx = after_year.find(kw)
                 if idx != -1:
                     # Find the last period before this keyword
-                    period_idx = after_year.rfind('.', 0, idx)
+                    period_idx = after_year.rfind(".", 0, idx)
                     if period_idx > last_period:
                         last_period = period_idx
             if last_period != -1:
                 title = after_year[:last_period].strip()
-                remaining = after_year[last_period+1:].strip()
+                remaining = after_year[last_period + 1 :].strip()
             else:
                 # fallback: up to the last period
-                period_idx = after_year.rfind('.')
+                period_idx = after_year.rfind(".")
                 if period_idx != -1:
                     title = after_year[:period_idx].strip()
-                    remaining = after_year[period_idx+1:].strip()
+                    remaining = after_year[period_idx + 1 :].strip()
                 else:
                     title = after_year.strip()
                     remaining = ""
@@ -677,20 +703,22 @@ def type_2_parser(citation):
             ed_match = list(re.finditer(r"ed\.,", citation[:title_end], re.IGNORECASE))
             if ed_match:
                 first_ed = ed_match[0]
-                authors = citation[:first_ed.end()].strip()
+                authors = citation[: first_ed.end()].strip()
                 authors = re.sub(r",\s*$", "", authors)
-                rest = citation[first_ed.end():title_end].lstrip(', ')
-                parts = [p.strip() for p in rest.split(',') if p.strip()]
+                rest = citation[first_ed.end() : title_end].lstrip(", ")
+                parts = [p.strip() for p in rest.split(",") if p.strip()]
                 if len(parts) >= 2:
-                    title = ', '.join(parts[:2])
+                    title = ", ".join(parts[:2])
                 elif parts:
                     title = parts[0]
                 else:
-                    title = ''
+                    title = ""
                 result["authors"] = authors
                 result["title"] = title
             else:
-                comma_indices = [m.start() for m in re.finditer(",", citation[:title_end])]
+                comma_indices = [
+                    m.start() for m in re.finditer(",", citation[:title_end])
+                ]
                 if comma_indices:
                     last_author_comma = comma_indices[-1]
                     authors = citation[:last_author_comma].strip()
@@ -707,7 +735,9 @@ def type_2_parser(citation):
         # Remaining text is everything after the year
         if not result["remaining_text"]:
             result["remaining_text"] = citation[year_end:].strip()
-            result["remaining_text"] = re.sub(r"^[\.,\s]+", "", result["remaining_text"])
+            result["remaining_text"] = re.sub(
+                r"^[\.,\s]+", "", result["remaining_text"]
+            )
     else:
         result["remaining_text"] = citation
 
