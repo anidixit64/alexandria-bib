@@ -932,6 +932,54 @@ def search_books():
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
+@app.route("/api/parse/type1", methods=["POST"])
+def parse_type1():
+    """Parse Type I citations using the type_1_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+        
+        result = type_1_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type1: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type2", methods=["POST"])
+def parse_type2():
+    """Parse Type II citations using the type_2_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+        
+        result = type_2_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type2: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type3", methods=["POST"])
+def parse_type3():
+    """Parse Type III citations using the type_3_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+        
+        result = type_3_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type3: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     app.run(debug=True, host="0.0.0.0", port=port)
