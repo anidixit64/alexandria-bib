@@ -145,6 +145,9 @@ def extract_book_citations(html_content):
                 citation = re.sub(r"^\^\s*", "", citation).strip()
                 citation = re.sub(r"^[a-z\s]+\s", "", citation).strip()
                 
+                # Apply additional cleaning rules
+                citation = clean_citation(citation)
+                
                 # Ensure we have a meaningful citation
                 if citation and len(citation) > 10:
                     citations.append(citation)
@@ -178,6 +181,9 @@ def extract_book_citations(html_content):
                             citation = re.sub(r"^\^\s*", "", citation).strip()
                             citation = re.sub(r"^[a-z\s]+\s", "", citation).strip()
                             
+                            # Apply additional cleaning rules
+                            citation = clean_citation(citation)
+                            
                             if citation and len(citation) > 10:
                                 citations.append(citation)
                 current = current.find_next_sibling()
@@ -191,6 +197,127 @@ def extract_book_citations(html_content):
             seen.add(citation)
     
     return unique_citations
+
+
+def clean_citation(citation):
+    """
+    Clean citation text by:
+    1. Removing everything after the ISBN number
+    2. Removing page numbers (pp. 139–141, p. 251, etc.)
+    3. Removing (PDF) from book titles
+    
+    Args:
+        citation (str): Raw citation text
+        
+    Returns:
+        str: Cleaned citation text
+    """
+    if not citation:
+        return citation
+    
+    # Step 1: Remove everything after the ISBN number
+    # Pattern to match ISBN followed by numbers and hyphens
+    isbn_pattern = r'ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+'
+    isbn_match = re.search(isbn_pattern, citation, re.IGNORECASE)
+    
+    if isbn_match:
+        # Keep only up to and including the ISBN
+        citation = citation[:isbn_match.end()].strip()
+    
+    # Step 2: Remove page numbers
+    # Pattern to match various page number formats
+    page_patterns = [
+        r'\s+pp\.\s+\d+[–—−-]\d+\.?',  # pp. 139–141
+        r'\s+p\.\s+\d+\.?',            # p. 251
+        r'\s+pages?\s+\d+[–—−-]\d+\.?', # pages 139-141
+        r'\s+page\s+\d+\.?',           # page 251
+    ]
+    
+    for pattern in page_patterns:
+        citation = re.sub(pattern, '', citation, flags=re.IGNORECASE)
+    
+    # Step 3: Remove (PDF) from book titles
+    # Pattern to match (PDF) with optional spaces around it
+    pdf_pattern = r'\s*\(PDF\)\s*'
+    citation = re.sub(pdf_pattern, '', citation, flags=re.IGNORECASE)
+    
+    # Clean up any extra whitespace and fix spaces before periods
+    citation = re.sub(r'\s+\.', '.', citation)  # Remove space(s) before period
+    citation = re.sub(r'\s+', ' ', citation).strip()
+    citation = re.sub(r'\.\s*$', '', citation)  # Remove trailing period
+    
+    return citation
+
+
+def type_1_parser(citation):
+    """
+    Parse Type I citations that contain parenthetical dates.
+    Extracts author names, year/date, title, and ISBN from the citation.
+    
+    Args:
+        citation (str): A citation string that contains parenthetical dates
+        
+    Returns:
+        dict: Parsed citation data with authors, year, title, isbn, and remaining_text fields
+    """
+    if not citation:
+        return {"authors": None, "year": None, "title": None, "isbn": None, "remaining_text": ""}
+    
+    # Initialize result
+    result = {"authors": None, "year": None, "title": None, "isbn": None, "remaining_text": citation}
+    
+    # Extract year/date from parentheses
+    # Pattern to match (2003) or (January 5, 1980) or (March 6, 1987)
+    date_pattern = r'\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)'
+    date_match = re.search(date_pattern, citation, re.IGNORECASE)
+    
+    if date_match:
+        date_text = date_match.group(0)
+        date_start = date_match.start()
+        date_end = date_match.end()
+        
+        # Extract authors from everything before the parentheses
+        authors = citation[:date_start].strip()
+        result["authors"] = authors
+        
+        # Extract just the year (4 digits)
+        year_match = re.search(r'\d{4}', date_text)
+        if year_match:
+            result["year"] = year_match.group(0)
+        
+        # Extract title from after the parentheses to the next period or comma
+        text_after_date = citation[date_end:].strip()
+        if text_after_date.startswith('.'):
+            text_after_date = text_after_date[1:].strip()
+        
+        # Remove comma if it appears immediately after the parentheses
+        if text_after_date.startswith(','):
+            text_after_date = text_after_date[1:].strip()
+        
+        # Find the next period after the date
+        next_period_index = text_after_date.find('.')
+        if next_period_index != -1:
+            title = text_after_date[:next_period_index].strip()
+            result["title"] = title
+            # Remove the title from the remaining text
+            result["remaining_text"] = text_after_date[next_period_index + 1:].strip()
+        else:
+            # If no period found, the rest is the title
+            result["title"] = text_after_date
+            result["remaining_text"] = ""
+    
+    # Extract ISBN
+    # Pattern to match ISBN followed by numbers and hyphens
+    isbn_pattern = r'ISBN\s+([0-9\-]+)'
+    isbn_match = re.search(isbn_pattern, result["remaining_text"], re.IGNORECASE)
+    
+    if isbn_match:
+        result["isbn"] = isbn_match.group(1)
+        # Remove the entire ISBN from the remaining text
+        isbn_full = isbn_match.group(0)  # This includes "ISBN " and the number
+        result["remaining_text"] = result["remaining_text"].replace(isbn_full, "").strip()
+    
+    return result
 
 
 @app.route("/")
