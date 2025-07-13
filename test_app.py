@@ -22,39 +22,47 @@ class TestBearsSearch(unittest.TestCase):
         expected_citations = [
             "Brunner, Bernd (2007). Bears: A Brief History. Yale University Press. ISBN 978-0-300-12299-2",
             "Domico, Terry; Newman, Mark (1988). Bears of the World. Facts on File. ISBN 978-0-8160-1536-8",
-            "Faulkner, William (1942). The Bear. Curley Publishing. ISBN 978-0-7927-0537-6."
+            "Faulkner, William (1942). The Bear. Curley Publishing. ISBN 978-0-7927-0537-6.",
         ]
-        
+
         # Test the API call
-        response = self.app.post('/api/search', 
-                               data=json.dumps({'query': 'Bears'}),
-                               content_type='application/json')
+        response = self.app.post(
+            "/api/search",
+            data=json.dumps({"query": "Bears"}),
+            content_type="application/json",
+        )
         data = json.loads(response.data)
-        
+
         # Verify the response
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(data['status'], 'success')
-        self.assertEqual(data['query'], 'Bears')
-        self.assertIsNotNone(data['page_title'])
-        self.assertGreater(len(data['citations']), 0)
-        
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["query"], "Bears")
+        self.assertIsNotNone(data["page_title"])
+        self.assertGreater(len(data["citations"]), 0)
+
         # Check that at least some of the expected citations are present
         found_citations = 0
         for expected_citation in expected_citations:
-            if any(expected_citation in citation for citation in data['citations']):
+            if any(expected_citation in citation for citation in data["citations"]):
                 found_citations += 1
-        
-        self.assertGreater(found_citations, 0, f"Expected to find at least one citation from {expected_citations}")
+
+        self.assertGreater(
+            found_citations,
+            0,
+            f"Expected to find at least one citation from {expected_citations}",
+        )
 
     def test_citation_structure(self):
         """Test that citations are returned as strings"""
-        response = self.app.post('/api/search', 
-                               data=json.dumps({'query': 'Bears'}),
-                               content_type='application/json')
+        response = self.app.post(
+            "/api/search",
+            data=json.dumps({"query": "Bears"}),
+            content_type="application/json",
+        )
         data = json.loads(response.data)
-        
-        if data['citations']:
-            citation = data['citations'][0]
+
+        if data["citations"]:
+            citation = data["citations"][0]
             # Citations should be strings, not dictionaries
             self.assertIsInstance(citation, str)
             self.assertGreater(len(citation), 10)  # Should have meaningful content
@@ -65,6 +73,7 @@ class TestType1Parser(unittest.TestCase):
 
     def setUp(self):
         from app import type_1_parser
+
         self.parser = type_1_parser
 
     def test_parser_exists(self):
@@ -80,12 +89,30 @@ class TestType1Parser(unittest.TestCase):
     def test_empty_input(self):
         """Test that type_1_parser handles empty input"""
         result = self.parser("")
-        self.assertEqual(result, {"authors": None, "year": None, "title": None, "isbn": None, "remaining_text": ""})
+        self.assertEqual(
+            result,
+            {
+                "authors": None,
+                "year": None,
+                "title": None,
+                "isbn": None,
+                "remaining_text": "",
+            },
+        )
 
     def test_none_input(self):
         """Test that type_1_parser handles None input"""
         result = self.parser(None)
-        self.assertEqual(result, {"authors": None, "year": None, "title": None, "isbn": None, "remaining_text": ""})
+        self.assertEqual(
+            result,
+            {
+                "authors": None,
+                "year": None,
+                "title": None,
+                "isbn": None,
+                "remaining_text": "",
+            },
+        )
 
     def test_extract_year_simple(self):
         """Test that type_1_parser extracts year from simple format (2009)"""
@@ -93,21 +120,25 @@ class TestType1Parser(unittest.TestCase):
         result = self.parser(test_citation)
         self.assertEqual(result["authors"], "Butler, Susan")
         self.assertEqual(result["year"], "2009")
-        self.assertEqual(result["title"], "The Dinkum Dictionary: The Origins of Australian Words")
+        self.assertEqual(
+            result["title"], "The Dinkum Dictionary: The Origins of Australian Words"
+        )
         self.assertEqual(result["isbn"], "978-1-921799-10-5")
         # Check that extracted parts are removed from remaining text
         self.assertNotIn("Butler, Susan", result["remaining_text"])
         self.assertNotIn("The Dinkum Dictionary", result["remaining_text"])
         self.assertNotIn("(2009)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
-    
+
     def test_extract_year_with_pdf(self):
         """Test that type_1_parser removes (PDF) from title"""
         test_citation = "Margulis, Sergio (2004). Causes of Deforestation of the Brazilian Amazon (PDF). World Bank Working Paper No. 22. Washington, DC: The World Bank. ISBN 978-0-8213-5691-3."
         result = self.parser(test_citation)
         self.assertEqual(result["authors"], "Margulis, Sergio")
         self.assertEqual(result["year"], "2004")
-        self.assertEqual(result["title"], "Causes of Deforestation of the Brazilian Amazon")
+        self.assertEqual(
+            result["title"], "Causes of Deforestation of the Brazilian Amazon"
+        )
         self.assertEqual(result["isbn"], "978-0-8213-5691-3")
 
     def test_extract_year_complex_date(self):
@@ -130,7 +161,9 @@ class TestType1Parser(unittest.TestCase):
 
     def test_no_year(self):
         """Test that type_1_parser handles citations without year"""
-        test_citation = "Smith, John. My Book Title. Publisher Name. p. 123. ISBN 0-123-45678-9"
+        test_citation = (
+            "Smith, John. My Book Title. Publisher Name. p. 123. ISBN 0-123-45678-9"
+        )
         result = self.parser(test_citation)
         self.assertIsNone(result["authors"])
         self.assertIsNone(result["year"])
@@ -198,9 +231,13 @@ class TestType1Parser(unittest.TestCase):
         """Test parsing Lackey citation with multiple editors"""
         test_citation = "Lackey, Robert; Lach, Denise; Duncan, Sally, eds. (2006). Salmon 2100: The Future of Wild Pacific Salmon. Bethesda, MD: American Fisheries Society. p. 629. ISBN 1-888569-78-6."
         result = self.parser(test_citation)
-        self.assertEqual(result["authors"], "Lackey, Robert; Lach, Denise; Duncan, Sally, eds.")
+        self.assertEqual(
+            result["authors"], "Lackey, Robert; Lach, Denise; Duncan, Sally, eds."
+        )
         self.assertEqual(result["year"], "2006")
-        self.assertEqual(result["title"], "Salmon 2100: The Future of Wild Pacific Salmon")
+        self.assertEqual(
+            result["title"], "Salmon 2100: The Future of Wild Pacific Salmon"
+        )
         self.assertEqual(result["isbn"], "1-888569-78-6")
 
     def test_kant_groundwork_citation(self):
@@ -227,8 +264,23 @@ class TestType1Parser(unittest.TestCase):
         result = self.parser(test_citation)
         self.assertEqual(result["authors"], "Alofsin, Anthony")
         self.assertEqual(result["year"], "1993")
-        self.assertEqual(result["title"], "Frank Lloyd Wright – the Lost Years, 1910–1922: A Study of Influence")
+        self.assertEqual(
+            result["title"],
+            "Frank Lloyd Wright – the Lost Years, 1910–1922: A Study of Influence",
+        )
         self.assertEqual(result["isbn"], "0-226-01366-9")
+
+    def test_wilson_mammal_species_citation(self):
+        """Test parsing Wilson citation with editors and edition"""
+        test_citation = "Wilson, D. E.; Reeder, D. M., eds. (2005). Mammal Species of the World: A Taxonomic and Geographic Reference (3rd ed.). Baltimore: Johns Hopkins University Press. ISBN 978-0-8018-8221-0. OCLC 62265494."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Wilson, D. E.; Reeder, D. M., eds.")
+        self.assertEqual(result["year"], "2005")
+        self.assertEqual(
+            result["title"],
+            "Mammal Species of the World: A Taxonomic and Geographic Reference (3rd ed.)",
+        )
+        self.assertEqual(result["isbn"], "978-0-8018-8221-0")
 
 
 class TestType3Parser(unittest.TestCase):
@@ -236,6 +288,7 @@ class TestType3Parser(unittest.TestCase):
 
     def setUp(self):
         from app import type_3_parser
+
         self.parser = type_3_parser
 
     def test_parser_exists(self):
@@ -250,7 +303,10 @@ class TestType3Parser(unittest.TestCase):
         self.assertEqual(result["book_authors"], "Wilson, D. E.; Reeder, D. M. (eds.)")
         self.assertEqual(result["year"], "2005")
         self.assertEqual(result["chapter_title"], "Order Cetacea")
-        self.assertEqual(result["book_title"], "Mammal Species of the World: A Taxonomic and Geographic Reference (3rd ed.)")
+        self.assertEqual(
+            result["book_title"],
+            "Mammal Species of the World: A Taxonomic and Geographic Reference (3rd ed.)",
+        )
         self.assertEqual(result["isbn"], "978-0-8018-8221-0")
         # Check that extracted parts are removed from remaining text
         self.assertNotIn("Mead, J. G.; Brownell, R. L. Jr.", result["remaining_text"])
@@ -268,13 +324,19 @@ class TestType3Parser(unittest.TestCase):
         self.assertEqual(result["book_authors"], "Walker, Susan; Higgs, Peter (eds.)")
         self.assertEqual(result["year"], "2001")
         self.assertEqual(result["chapter_title"], "163 Limestone head of Cleopatra VII")
-        self.assertEqual(result["book_title"], "Cleopatra of Egypt: from History to Myth")
+        self.assertEqual(
+            result["book_title"], "Cleopatra of Egypt: from History to Myth"
+        )
         self.assertEqual(result["isbn"], "978-0-691-08835-8")
         # Check that extracted parts are removed from remaining text
         self.assertNotIn("Ashton, Sally-Ann", result["remaining_text"])
-        self.assertNotIn("163 Limestone head of Cleopatra VII", result["remaining_text"])
+        self.assertNotIn(
+            "163 Limestone head of Cleopatra VII", result["remaining_text"]
+        )
         self.assertNotIn("Walker, Susan; Higgs, Peter", result["remaining_text"])
-        self.assertNotIn("Cleopatra of Egypt: from History to Myth", result["remaining_text"])
+        self.assertNotIn(
+            "Cleopatra of Egypt: from History to Myth", result["remaining_text"]
+        )
         self.assertNotIn("(2001b)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
 
@@ -285,9 +347,35 @@ class TestType3Parser(unittest.TestCase):
         self.assertEqual(result["chapter_authors"], "Chester, DK; Duncan, AM")
         self.assertEqual(result["book_authors"], "Grattan, J; Torrence, R (eds.)")
         self.assertEqual(result["year"], "2007")
-        self.assertEqual(result["chapter_title"], "Geomythology, theodicy, and the continuing relevance of religious worldviews on responses to volcanic eruptions")
-        self.assertEqual(result["book_title"], "Living under the shadow: The cultural impacts of volcanic eruptions")
+        self.assertEqual(
+            result["chapter_title"],
+            "Geomythology, theodicy, and the continuing relevance of religious worldviews on responses to volcanic eruptions",
+        )
+        self.assertEqual(
+            result["book_title"],
+            "Living under the shadow: The cultural impacts of volcanic eruptions",
+        )
         self.assertEqual(result["isbn"], "9781315425177")
+
+    def test_christina_fink_citation(self):
+        """Test parsing Christina Fink citation with quoted chapter title"""
+        from app import type_4_parser
+
+        test_citation = 'Christina Fink, "The Moment of the Monks: Burma, 2007", in Adam Roberts and Timothy Garton Ash (eds.), Civil Resistance and Power Politics: The Experience of Non-violent Action from Gandhi to the Present, Oxford University Press, 2009. ISBN 978-0-19-955201-6, pp. 354–370. [1]'
+        result = type_4_parser(test_citation)
+        self.assertEqual(result["chapter_authors"], "Christina Fink")
+        self.assertEqual(
+            result["book_authors"], "Adam Roberts and Timothy Garton Ash (eds.)"
+        )
+        self.assertEqual(result["year"], "2009")
+        self.assertEqual(
+            result["chapter_title"], "The Moment of the Monks: Burma, 2007"
+        )
+        self.assertEqual(
+            result["book_title"],
+            "Civil Resistance and Power Politics: The Experience of Non-violent Action from Gandhi to the Present",
+        )
+        self.assertEqual(result["isbn"], "978-0-19-955201-6")
 
 
 class TestType2Parser(unittest.TestCase):
@@ -295,6 +383,7 @@ class TestType2Parser(unittest.TestCase):
 
     def setUp(self):
         from app import type_2_parser
+
         self.parser = type_2_parser
 
     def test_parser_exists(self):
@@ -320,38 +409,65 @@ class TestType2Parser(unittest.TestCase):
         self.assertEqual(result["title"], "The Civil War Battlefield Guide, 2nd ed.")
         self.assertEqual(result["isbn"], "978-0-395-74012-5")
 
+    def test_sorensen_censorship_citation(self):
+        """Test parsing Sorensen citation with standalone year"""
+        test_citation = "Sorensen, Lars-Martin (2009). Censorship of Japanese Films During the U.S. Occupation of Japan: The Cases of Yasujiro Ozu and Akira Kurosawa. Edwin Mellen Press. ISBN 0-7734-4673-7."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Sorensen, Lars-Martin")
+        self.assertEqual(result["year"], "2009")
+        self.assertEqual(
+            result["title"],
+            "Censorship of Japanese Films During the U.S. Occupation of Japan: The Cases of Yasujiro Ozu and Akira Kurosawa",
+        )
+        self.assertEqual(result["isbn"], "0-7734-4673-7")
+
+    def test_pink_triangle_citation(self):
+        """Test parsing Pink Triangle citation with by author format"""
+        test_citation = "The Pink Triangle: The Nazi War Against Homosexuals (1986) by Richard Plant (New Republic Books). ISBN 0-8050-0600-1."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Richard Plant")
+        self.assertEqual(result["year"], "1986")
+        self.assertEqual(
+            result["title"], "The Pink Triangle: The Nazi War Against Homosexuals"
+        )
+        self.assertEqual(result["isbn"], "0-8050-0600-1")
+
 
 class TestCitationCleaning(unittest.TestCase):
     """Test cases for citation cleaning functionality"""
-    
+
     def test_remove_after_isbn(self):
         """Test removing everything after ISBN number"""
         citation = "Taylor, Isaac (1898). Names and Their Histories: A Handbook of Historical Geography and Topographical Nomenclature. London: Rivingtons. ISBN 978-0-559-29668-0. Archived from the original on July 25, 2020. Retrieved October 12, 2008. {{cite book}}: ISBN / Date incompatibility (help)"
         expected = "Taylor, Isaac (1898). Names and Their Histories: A Handbook of Historical Geography and Topographical Nomenclature. London: Rivingtons. ISBN 978-0-559-29668-0"
         result = clean_citation(citation)
         self.assertEqual(result, expected)
-    
+
     def test_remove_page_numbers_pp(self):
         """Test removing page numbers with pp. format"""
         citation = "Smith, John (2000). Book Title. Publisher. ISBN 123-4-567-89012-3. pp. 139–141."
         expected = "Smith, John (2000). Book Title. Publisher. ISBN 123-4-567-89012-3"
         result = clean_citation(citation)
         self.assertEqual(result, expected)
-    
+
     def test_remove_page_numbers_p(self):
         """Test removing page numbers with p. format"""
-        citation = "Doe, Jane (1995). Another Book. Publisher. ISBN 987-6-543-21098-7. p. 251."
+        citation = (
+            "Doe, Jane (1995). Another Book. Publisher. ISBN 987-6-543-21098-7. p. 251."
+        )
         expected = "Doe, Jane (1995). Another Book. Publisher. ISBN 987-6-543-21098-7"
         result = clean_citation(citation)
         self.assertEqual(result, expected)
-    
+
     def test_remove_pdf_from_title(self):
         """Test removing (PDF) from book titles"""
-        citation = "Author, Name (2010). Book Title (PDF). Publisher. ISBN 111-2-333-44444-5"
+        citation = (
+            "Author, Name (2010). Book Title (PDF). Publisher. ISBN 111-2-333-44444-5"
+        )
         expected = "Author, Name (2010). Book Title. Publisher. ISBN 111-2-333-44444-5"
         result = clean_citation(citation)
         self.assertEqual(result, expected)
-    
+
     def test_combined_cleaning(self):
         """Test all cleaning rules applied together"""
         citation = "Author, Name (2010). Book Title (PDF). Publisher. ISBN 111-2-333-44444-5. pp. 139–141. Archived from original."
@@ -360,5 +476,5 @@ class TestCitationCleaning(unittest.TestCase):
         self.assertEqual(result, expected)
 
 
-if __name__ == '__main__':
-    unittest.main() 
+if __name__ == "__main__":
+    unittest.main()
