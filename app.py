@@ -139,23 +139,11 @@ def extract_book_citations(html_content):
         for element in elements:
             text = element.get_text()
             isbn_pattern = r"ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+"
-            if re.search(isbn_pattern, text, re.IGNORECASE):
-                # Clean up the citation text - remove '^ ' and lowercase letter sequences
-                citation = re.sub(r"\s+", " ", text).strip()
-                citation = re.sub(r"^\^\s*", "", citation).strip()
-                citation = re.sub(
-                    r"^[a-z\s]+\s",
-                    "",
-                    citation,
-                )
-                citation = citation.strip()
-
-                # Apply additional cleaning rules
-                citation = clean_citation(citation)
-
-                # Ensure we have a meaningful citation
-                if citation and len(citation) > 10:
-                    citations.append(citation)
+            isbn_found = re.search(isbn_pattern, text, re.IGNORECASE)
+            if isbn_found:
+                c = clean_raw_citation(text)
+                if c and len(c) > 10:
+                    citations.append(c)
 
     # Also look for citations in specific sections by finding headers and their content
     section_headers = [
@@ -190,15 +178,9 @@ def extract_book_citations(html_content):
                             r"ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+"
                         )
                         if re.search(isbn_pattern, text, re.IGNORECASE):
-                            citation = re.sub(r"\s+", " ", text).strip()
-                            citation = re.sub(r"^\^\s*", "", citation).strip()
-                            citation = re.sub(r"^[a-z\s]+\s", "", citation).strip()
-
-                            # Apply additional cleaning rules
-                            citation = clean_citation(citation)
-
-                            if citation and len(citation) > 10:
-                                citations.append(citation)
+                            c = clean_raw_citation(text)
+                            if c and len(c) > 10:
+                                citations.append(c)
                 current = current.find_next_sibling()
 
     # Remove duplicates while preserving order
@@ -268,6 +250,19 @@ def clean_citation(citation):
     citation = re.sub(r"\.\s*$", "", citation)  # Remove trailing period
 
     return citation
+
+
+def clean_raw_citation(text):
+    """Clean up the raw citation text for extract_book_citations."""
+    c = re.sub(r"\s+", " ", text)
+    c = c.strip()
+    c = re.sub(r"^\^\s*", "", c)
+    c = c.strip()
+    pattern = r"^[a-z\s]+\s"
+    c = re.sub(pattern, "", c)
+    c = c.strip()
+    c = clean_citation(c)
+    return c
 
 
 def type_1_parser(citation):
