@@ -99,13 +99,10 @@ def extract_bibliography_sections(html_content):
 
 def extract_book_citations(html_content):
     """Extract book citations that contain ISBN numbers"""
-    # Parse the HTML content
     soup = BeautifulSoup(html_content, "html.parser")
-
-    # Find all citation elements (usually in <li> tags within <ol> or <ul>)
     citations = []
-
-    # Look for common citation patterns
+    
+    # Updated citation selectors to include more sections
     citation_selectors = [
         "ol li",
         "ul li",
@@ -115,28 +112,76 @@ def extract_book_citations(html_content):
         "#Bibliography li",
         "#Sources li",
         "#Further_Reading li",
+        "#Notes li",
+        "#Citations li",
+        "#Primary_Sources li",
+        "#Secondary_Sources li",
+        "h2:contains('References') + ol li",
+        "h2:contains('Bibliography') + ol li",
+        "h2:contains('Sources') + ol li",
+        "h2:contains('Further Reading') + ol li",
+        "h2:contains('Notes') + ol li",
+        "h2:contains('Citations') + ol li",
+        "h2:contains('Primary Sources') + ol li",
+        "h2:contains('Secondary Sources') + ol li",
+        "h3:contains('References') + ol li",
+        "h3:contains('Bibliography') + ol li",
+        "h3:contains('Sources') + ol li",
+        "h3:contains('Further Reading') + ol li",
+        "h3:contains('Notes') + ol li",
+        "h3:contains('Citations') + ol li",
+        "h3:contains('Primary Sources') + ol li",
+        "h3:contains('Secondary Sources') + ol li",
     ]
-
+    
     for selector in citation_selectors:
         elements = soup.select(selector)
         for element in elements:
             text = element.get_text()
-
-            # Check if this citation contains an ISBN
             isbn_pattern = r"ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+"
             if re.search(isbn_pattern, text, re.IGNORECASE):
-                # Clean up the citation text
+                # Clean up the citation text - remove '^ ' and lowercase letter sequences
                 citation = re.sub(r"\s+", " ", text).strip()
-
-                # Strip citation markers like "^ a b c d" from the beginning
-                # Also strip leading commas and whitespace that might be left after
-                # removing markers
-                citation = re.sub(r"^\^[\s\w]+", "", citation).strip()
-                citation = re.sub(r"^,\s*", "", citation).strip()
-
-                if citation and len(citation) > 10:  # Basic validation
+                citation = re.sub(r"^\^\s*", "", citation).strip()
+                citation = re.sub(r"^[a-z\s]+\s", "", citation).strip()
+                
+                # Ensure we have a meaningful citation
+                if citation and len(citation) > 10:
                     citations.append(citation)
-
+    
+    # Also look for citations in specific sections by finding headers and their content
+    section_headers = [
+        "References", "Bibliography", "Sources", "Further Reading", 
+        "Notes", "Citations", "Primary Sources", "Secondary Sources"
+    ]
+    
+    # Find all h2 and h3 headers
+    headers = soup.find_all(["h2", "h3"])
+    
+    for header in headers:
+        header_text = header.get_text().strip()
+        
+        # Check if this header matches any of our target sections
+        if any(target.lower() in header_text.lower() for target in section_headers):
+            # Get the next sibling elements until we hit another header
+            current = header.find_next_sibling()
+            
+            while current and current.name not in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                if current.name in ["ol", "ul"]:
+                    # Extract list items from this list
+                    list_items = current.find_all("li")
+                    for item in list_items:
+                        text = item.get_text()
+                        isbn_pattern = r"ISBN[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+[-\s]?\d+"
+                        if re.search(isbn_pattern, text, re.IGNORECASE):
+                            citation = re.sub(r"\s+", " ", text).strip()
+                            citation = re.sub(r"^\^\s*", "", citation).strip()
+                            citation = re.sub(r"^[a-z\s]+\s", "", citation).strip()
+                            
+                            if citation and len(citation) > 10:
+                                citations.append(citation)
+                current = current.find_next_sibling()
+    
     # Remove duplicates while preserving order
     unique_citations = []
     seen = set()
@@ -144,7 +189,7 @@ def extract_book_citations(html_content):
         if citation not in seen:
             unique_citations.append(citation)
             seen.add(citation)
-
+    
     return unique_citations
 
 
@@ -164,11 +209,8 @@ def search_books():
     try:
         data = request.get_json()
         query = data.get("query", "").strip()
-
         if not query:
             return jsonify({"error": "Query is required", "status": "error"}), 400
-
-        # Step 1: Search Wikipedia for the topic
         page_title = search_wikipedia(query)
         if not page_title:
             return (
@@ -180,8 +222,6 @@ def search_books():
                 ),
                 404,
             )
-
-        # Step 2: Get the Wikipedia page content
         html_content = get_wikipedia_content(page_title)
         if not html_content:
             return (
@@ -193,10 +233,7 @@ def search_books():
                 ),
                 500,
             )
-
-        # Step 3: Extract book citations
         citations = extract_book_citations(html_content)
-
         return jsonify(
             {
                 "query": query,
@@ -206,7 +243,6 @@ def search_books():
                 "status": "success",
             }
         )
-
     except Exception as e:
         print(f"Error in search_books: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
