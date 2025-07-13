@@ -320,6 +320,11 @@ def type_1_parser(citation):
             text_after_date = text_after_date[1:].strip()
         if text_after_date.startswith(","):
             text_after_date = text_after_date[1:].strip()
+        # Skip over additional years in brackets like [1961]
+        bracket_year_pattern = r"^\s*\[\d{4}\]\s*\.?\s*"
+        bracket_match = re.match(bracket_year_pattern, text_after_date)
+        if bracket_match:
+            text_after_date = text_after_date[bracket_match.end():].strip()
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived',
         # or a comma before publisher/ISBN
         publisher_keywords = [

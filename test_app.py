@@ -282,6 +282,15 @@ class TestType1Parser(unittest.TestCase):
         )
         self.assertEqual(result["isbn"], "978-0-8018-8221-0")
 
+    def test_kamakau_ruling_chiefs_citation(self):
+        """Test parsing Kamakau citation with original publication year in brackets"""
+        test_citation = "Kamakau, Samuel (1992) [1961]. Ruling Chiefs of Hawaii (Revised ed.). Honolulu: Kamehameha Schools Press. ISBN 0-87336-014-1. OCLC 25008795."
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Kamakau, Samuel")
+        self.assertEqual(result["year"], "1992")
+        self.assertEqual(result["title"], "Ruling Chiefs of Hawaii (Revised ed.)")
+        self.assertEqual(result["isbn"], "0-87336-014-1")
+
 
 class TestType3Parser(unittest.TestCase):
     """Test the type_3_parser function for citations with quoted chapter titles"""
