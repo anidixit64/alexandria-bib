@@ -143,7 +143,12 @@ def extract_book_citations(html_content):
                 # Clean up the citation text - remove '^ ' and lowercase letter sequences
                 citation = re.sub(r"\s+", " ", text).strip()
                 citation = re.sub(r"^\^\s*", "", citation).strip()
-                citation = re.sub(r"^[a-z\s]+\s", "", citation).strip()
+                citation = re.sub(
+                    r"^[a-z\s]+\s",
+                    "",
+                    citation,
+                )
+                citation = citation.strip()
 
                 # Apply additional cleaning rules
                 citation = clean_citation(citation)
@@ -238,7 +243,7 @@ def clean_citation(citation):
 
     if isbn_match:
         # Keep only up to and including the ISBN
-        citation = citation[: isbn_match.end()].strip()
+        citation = citation[:isbn_match.end()].strip()
 
     # Step 2: Remove page numbers
     # Pattern to match various page number formats
@@ -274,7 +279,8 @@ def type_1_parser(citation):
         citation (str): A citation string that contains parenthetical dates
 
     Returns:
-        dict: Parsed citation data with authors, year, title, isbn, and remaining_text fields
+        dict: Parsed citation data with authors, year, title, isbn, and
+        remaining_text fields
     """
     if not citation:
         return {
@@ -324,7 +330,7 @@ def type_1_parser(citation):
         bracket_year_pattern = r"^\s*\[\d{4}\]\s*\.?\s*"
         bracket_match = re.match(bracket_year_pattern, text_after_date)
         if bracket_match:
-            text_after_date = text_after_date[bracket_match.end() :].strip()
+            text_after_date = text_after_date[bracket_match.end():].strip()
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived',
         # or a comma before publisher/ISBN
         publisher_keywords = [
@@ -499,7 +505,7 @@ def type_3_parser(citation):
             result["chapter_title"] = chapter_title
 
             # Get text after the quoted chapter title
-            text_after_quote = text_after_date[quote_match.end() :].strip()
+            text_after_quote = text_after_date[quote_match.end():].strip()
 
             # Clean up text_after_quote for leading commas/whitespace
             text_after_quote = text_after_quote.lstrip(", ").strip()
@@ -511,13 +517,14 @@ def type_3_parser(citation):
                 book_authors = in_match.group(1).strip()
                 result["book_authors"] = book_authors
                 # Get text after the "in... (eds.)," or "." part
-                text_after_in = text_after_quote[in_match.end() :].strip()
-                # Extract book title (everything up to the next comma, or period if no comma)
+                text_after_in = text_after_quote[in_match.end():].strip()
+                # Extract book title (everything up to the next comma, or period
+                # if no comma)
                 comma_index = text_after_in.find(",")
                 if comma_index != -1:
                     book_title = text_after_in[:comma_index].strip()
                     result["book_title"] = book_title
-                    result["remaining_text"] = text_after_in[comma_index + 1 :].strip()
+                    result["remaining_text"] = text_after_in[comma_index + 1:].strip()
                 else:
                     # Fallback to previous logic: up to the next period
                     book_title_pattern = r"^(.*?\([^)]*\))?[^.]*\."
@@ -527,17 +534,15 @@ def type_3_parser(citation):
                         if book_title.endswith("."):
                             book_title = book_title[:-1]
                         result["book_title"] = book_title
-                        result["remaining_text"] = text_after_in[
-                            len(book_title_match.group(0)) :
-                        ].strip()
+                        idx = len(book_title_match.group(0))
+                        result["remaining_text"] = text_after_in[idx:].strip()
                     else:
                         next_period_index = text_after_in.find(".")
                         if next_period_index != -1:
                             book_title = text_after_in[:next_period_index].strip()
                             result["book_title"] = book_title
-                            result["remaining_text"] = text_after_in[
-                                next_period_index + 1 :
-                            ].strip()
+                            idx = next_period_index + 1
+                            result["remaining_text"] = text_after_in[idx:].strip()
                         else:
                             result["book_title"] = text_after_in
                             result["remaining_text"] = ""
@@ -573,7 +578,8 @@ def type_2_parser(citation):
         citation (str): A citation string that contains standalone years
 
     Returns:
-        dict: Parsed citation data with authors, year, title, isbn, and remaining_text fields
+        dict: Parsed citation data with authors, year, title, isbn, and
+        remaining_text fields
     """
     if not citation:
         return {
@@ -664,7 +670,7 @@ def type_2_parser(citation):
             title = re.sub(r"\s*\(\s*$", "", title).strip()
             result["authors"] = author
             result["title"] = title
-            result["remaining_text"] = citation[year_end : by_match.start()].strip()
+            result["remaining_text"] = citation[year_end:by_match.start()].strip()
             result["remaining_text"] = re.sub(
                 r"^[\.,\s]+", "", result["remaining_text"]
             )
@@ -685,13 +691,13 @@ def type_2_parser(citation):
                         last_period = period_idx
             if last_period != -1:
                 title = after_year[:last_period].strip()
-                remaining = after_year[last_period + 1 :].strip()
+                remaining = after_year[last_period + 1:].strip()
             else:
                 # fallback: up to the last period
                 period_idx = after_year.rfind(".")
                 if period_idx != -1:
                     title = after_year[:period_idx].strip()
-                    remaining = after_year[period_idx + 1 :].strip()
+                    remaining = after_year[period_idx + 1:].strip()
                 else:
                     title = after_year.strip()
                     remaining = ""
@@ -705,7 +711,7 @@ def type_2_parser(citation):
                 first_ed = ed_match[0]
                 authors = citation[: first_ed.end()].strip()
                 authors = re.sub(r",\s*$", "", authors)
-                rest = citation[first_ed.end() : title_end].lstrip(", ")
+                rest = citation[first_ed.end():title_end].lstrip(", ")
                 parts = [p.strip() for p in rest.split(",") if p.strip()]
                 if len(parts) >= 2:
                     title = ", ".join(parts[:2])
@@ -746,16 +752,20 @@ def type_2_parser(citation):
 
 def type_4_parser(citation):
     """
-    Parse Type IV citations that have quoted chapter titles without parenthetical dates.
-    Extracts chapter authors, year, chapter title, book authors, book title, and ISBN.
+    Parse Type IV citations that have quoted chapter titles without parenthetical
+    dates. Extracts chapter authors, year, chapter title, book authors, book
+    title, and ISBN.
 
-    Format: Chapter Authors, "Chapter Title", in Book Authors (eds.), Book Title, Publisher, Year. ISBN.
+    Format: Chapter Authors, "Chapter Title", in Book Authors (eds.), Book Title,
+    Publisher, Year. ISBN.
 
     Args:
-        citation (str): A citation string that contains quoted chapter titles without parenthetical dates
+        citation (str): A citation string that contains quoted chapter titles
+        without parenthetical dates
 
     Returns:
-        dict: Parsed citation data with chapter_authors, book_authors, year, chapter_title, book_title, isbn, and remaining_text fields
+        dict: Parsed citation data with chapter_authors, book_authors, year,
+        chapter_title, book_title, isbn, and remaining_text fields
     """
     if not citation:
         return {
@@ -812,13 +822,14 @@ def type_4_parser(citation):
             book_authors = in_match.group(1).strip()
             result["book_authors"] = book_authors
             # Get text after the "in... (eds.)," or "." part
-            text_after_in = text_after_quote[in_match.end() :].strip()
-            # Extract book title (everything up to the next comma, or period if no comma)
+            text_after_in = text_after_quote[in_match.end():].strip()
+            # Extract book title (everything up to the next comma, or period
+            # if no comma)
             comma_index = text_after_in.find(",")
             if comma_index != -1:
                 book_title = text_after_in[:comma_index].strip()
                 result["book_title"] = book_title
-                result["remaining_text"] = text_after_in[comma_index + 1 :].strip()
+                result["remaining_text"] = text_after_in[comma_index + 1:].strip()
             else:
                 # Fallback to previous logic: up to the next period
                 book_title_pattern = r"^(.*?\([^)]*\))?[^.]*\."
@@ -829,7 +840,7 @@ def type_4_parser(citation):
                         book_title = book_title[:-1]
                     result["book_title"] = book_title
                     result["remaining_text"] = text_after_in[
-                        len(book_title_match.group(0)) :
+                        len(book_title_match.group(0)):
                     ].strip()
                 else:
                     next_period_index = text_after_in.find(".")
@@ -837,7 +848,7 @@ def type_4_parser(citation):
                         book_title = text_after_in[:next_period_index].strip()
                         result["book_title"] = book_title
                         result["remaining_text"] = text_after_in[
-                            next_period_index + 1 :
+                            next_period_index + 1:
                         ].strip()
                     else:
                         result["book_title"] = text_after_in
@@ -868,7 +879,12 @@ def type_4_parser(citation):
 
 @app.route("/")
 def home():
-    return jsonify({"message": "Alexandria API is running", "status": "success"})
+    return jsonify(
+        {
+            "message": "Alexandria API is running",
+            "status": "success",
+        }
+    )
 
 
 @app.route("/api/health")
