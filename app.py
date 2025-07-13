@@ -196,7 +196,15 @@ def extract_book_citations(html_content):
             unique_citations.append(citation)
             seen.add(citation)
     
-    return unique_citations
+    # Filter to only include citations with dates in parentheses
+    filtered_citations = []
+    date_pattern = r'\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)'
+    
+    for citation in unique_citations:
+        if re.search(date_pattern, citation, re.IGNORECASE):
+            filtered_citations.append(citation)
+    
+    return filtered_citations
 
 
 def clean_citation(citation):
@@ -285,7 +293,115 @@ def type_1_parser(citation):
         if year_match:
             result["year"] = year_match.group(0)
         
-        # Extract title from after the parentheses to the next period or comma
+        # Extract title from after the parentheses to the next period, comma, or before publisher/ISBN
+        text_after_date = citation[date_end:].strip()
+        if text_after_date.startswith('.'):
+            text_after_date = text_after_date[1:].strip()
+        if text_after_date.startswith(','):
+            text_after_date = text_after_date[1:].strip()
+        # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived', or a comma before publisher/ISBN
+        publisher_keywords = [
+            'press', 'publishing', 'publisher', 'university', 'blackwell', 'princeton', 'cambridge', 'oxford', 'harvard', 'yale', 'penguin', 'random house', 'simon & schuster', 'wiley', 'springer', 'elsevier', 'macmillan', 'routledge', 'academic press', 'london & new york', 'london', 'new york', 'isbn', 'retrieved', 'archived'
+        ]
+        # Find comma followed by publisher-like word or ISBN/retrieved/archived
+        comma_pat = re.compile(r',\s*([A-Za-z& ]+)(?:\s*:\s*[A-Za-z& ]+)?', re.IGNORECASE)
+        comma_match = comma_pat.search(text_after_date)
+        comma_stop = None
+        if comma_match:
+            next_word = comma_match.group(1).strip().lower()
+            for kw in publisher_keywords:
+                if next_word.startswith(kw):
+                    comma_stop = comma_match.start()
+                    break
+        # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived'
+        # But don't stop at parentheses that are part of the title
+        stop_patterns = [r'\.', r'ISBN', r' p\.', r' pp\.', r'\s+retrieved', r'\s+archived']
+        stops = []
+        for pat in stop_patterns:
+            matches = list(re.finditer(pat, text_after_date, re.IGNORECASE))
+            for match in matches:
+                # Check if this stop is inside parentheses (part of title)
+                pos = match.start()
+                # Count parentheses before this position
+                open_parens = text_after_date[:pos].count('(')
+                close_parens = text_after_date[:pos].count(')')
+                # If we're inside parentheses, skip this stop
+                if open_parens > close_parens:
+                    continue
+                stops.append(pos)
+        if comma_stop is not None:
+            stops.append(comma_stop)
+        if stops:
+            stop_index = min(stops)
+            title = text_after_date[:stop_index].strip()
+        else:
+            title = text_after_date.strip()
+        # Remove (PDF) from title
+        title = re.sub(r'\s*\(PDF\)\s*', '', title, flags=re.IGNORECASE)
+        # Remove trailing period
+        title = re.sub(r'\.+$', '', title).strip()
+        result["title"] = title
+        # Remove the title from the remaining text
+        if stops:
+            remaining = text_after_date[stop_index:].strip()
+            # Remove leading punctuation/whitespace
+            remaining = re.sub(r'^[\.,\s]+', '', remaining)
+            result["remaining_text"] = remaining
+        else:
+            result["remaining_text"] = ""
+    
+    # Extract ISBN
+    # Pattern to match ISBN followed by numbers and hyphens
+    isbn_pattern = r'ISBN\s+([0-9\-]+)'
+    isbn_match = re.search(isbn_pattern, result["remaining_text"], re.IGNORECASE)
+    
+    if isbn_match:
+        result["isbn"] = isbn_match.group(1)
+        # Remove the entire ISBN from the remaining text
+        isbn_full = isbn_match.group(0)  # This includes "ISBN " and the number
+        result["remaining_text"] = result["remaining_text"].replace(isbn_full, "").strip()
+    
+    return result
+
+
+def type_3_parser(citation):
+    """
+    Parse Type III citations that contain quoted chapter titles.
+    Extracts chapter authors, year, chapter title, book authors, book title, and ISBN.
+    
+    Format: Chapter Authors (year). 'Chapter Title'. In Book Authors (eds.). Book Title. Publisher. ISBN.
+    
+    Args:
+        citation (str): A citation string that contains quoted chapter titles
+        
+    Returns:
+        dict: Parsed citation data with chapter_authors, book_authors, year, chapter_title, book_title, isbn, and remaining_text fields
+    """
+    if not citation:
+        return {"chapter_authors": None, "book_authors": None, "year": None, "chapter_title": None, "book_title": None, "isbn": None, "remaining_text": citation}
+    
+    # Initialize result
+    result = {"chapter_authors": None, "book_authors": None, "year": None, "chapter_title": None, "book_title": None, "isbn": None, "remaining_text": citation}
+    
+    # Extract year/date from parentheses
+    date_pattern = r'\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)'
+    date_match = re.search(date_pattern, citation, re.IGNORECASE)
+    
+    if date_match:
+        date_text = date_match.group(0)
+        date_start = date_match.start()
+        date_end = date_match.end()
+        
+        # Extract chapter authors from everything before the parentheses
+        chapter_authors = citation[:date_start].strip()
+        result["chapter_authors"] = chapter_authors
+        
+        # Extract just the year (4 digits)
+        year_match = re.search(r'\d{4}', date_text)
+        if year_match:
+            result["year"] = year_match.group(0)
+        
+        # Extract chapter title from quoted text after the parentheses
         text_after_date = citation[date_end:].strip()
         if text_after_date.startswith('.'):
             text_after_date = text_after_date[1:].strip()
@@ -294,20 +410,60 @@ def type_1_parser(citation):
         if text_after_date.startswith(','):
             text_after_date = text_after_date[1:].strip()
         
-        # Find the next period after the date
-        next_period_index = text_after_date.find('.')
-        if next_period_index != -1:
-            title = text_after_date[:next_period_index].strip()
-            result["title"] = title
-            # Remove the title from the remaining text
-            result["remaining_text"] = text_after_date[next_period_index + 1:].strip()
+        # Find quoted chapter title (single or double quotes)
+        quote_pattern = r'[\'"]([^\'"]+)[\'"]'
+        quote_match = re.search(quote_pattern, text_after_date)
+        
+        if quote_match:
+            chapter_title = quote_match.group(1)
+            result["chapter_title"] = chapter_title
+            
+            # Get text after the quoted chapter title
+            text_after_quote = text_after_date[quote_match.end():].strip()
+            
+            # Clean up text_after_quote for leading commas/whitespace
+            text_after_quote = text_after_quote.lstrip(', ').strip()
+            # Look for "in" followed by book authors and "(eds.)"
+            in_pattern = r'in\s+([^\(]+\(eds?\.\))[,\.]'
+            in_match = re.search(in_pattern, text_after_quote, re.IGNORECASE)
+            
+            if in_match:
+                book_authors = in_match.group(1).strip()
+                result["book_authors"] = book_authors
+                # Get text after the "in... (eds.)," or "." part
+                text_after_in = text_after_quote[in_match.end():].strip()
+                # Extract book title (everything up to the next comma, or period if no comma)
+                comma_index = text_after_in.find(',')
+                if comma_index != -1:
+                    book_title = text_after_in[:comma_index].strip()
+                    result["book_title"] = book_title
+                    result["remaining_text"] = text_after_in[comma_index + 1:].strip()
+                else:
+                    # Fallback to previous logic: up to the next period
+                    book_title_pattern = r'^(.*?\([^)]*\))?[^.]*\.'
+                    book_title_match = re.match(book_title_pattern, text_after_in)
+                    if book_title_match:
+                        book_title = book_title_match.group(0).strip()
+                        if book_title.endswith('.'):
+                            book_title = book_title[:-1]
+                        result["book_title"] = book_title
+                        result["remaining_text"] = text_after_in[len(book_title_match.group(0)):].strip()
+                    else:
+                        next_period_index = text_after_in.find('.')
+                        if next_period_index != -1:
+                            book_title = text_after_in[:next_period_index].strip()
+                            result["book_title"] = book_title
+                            result["remaining_text"] = text_after_in[next_period_index + 1:].strip()
+                        else:
+                            result["book_title"] = text_after_in
+                            result["remaining_text"] = ""
+            else:
+                result["remaining_text"] = text_after_quote
         else:
-            # If no period found, the rest is the title
-            result["title"] = text_after_date
-            result["remaining_text"] = ""
+            # If no quoted chapter title found, treat as regular citation
+            result["remaining_text"] = text_after_date
     
     # Extract ISBN
-    # Pattern to match ISBN followed by numbers and hyphens
     isbn_pattern = r'ISBN\s+([0-9\-]+)'
     isbn_match = re.search(isbn_pattern, result["remaining_text"], re.IGNORECASE)
     
