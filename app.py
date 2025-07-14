@@ -314,13 +314,18 @@ def type_1_parser(citation):
         if year_match:
             result["year"] = year_match.group(0)
 
-        # Extract title from after the parentheses to the next period, comma,
-        # or before publisher/ISBN
+        # Remove any bracketed phrase immediately after the year
         text_after_date = citation[date_end:].strip()
+        # Remove leading period or comma
         if text_after_date.startswith("."):
             text_after_date = text_after_date[1:].strip()
         if text_after_date.startswith(","):
             text_after_date = text_after_date[1:].strip()
+        # Remove bracketed phrase after year
+        bracket_phrase_pattern = r"^\[.*?\]\.?\s*"
+        bracket_phrase_match = re.match(bracket_phrase_pattern, text_after_date)
+        if bracket_phrase_match:
+            text_after_date = text_after_date[bracket_phrase_match.end() :].strip()
         # Skip over additional years in brackets like [1961]
         bracket_year_pattern = r"^\s*\[\d{4}\]\s*\.?\s*"
         bracket_match = re.match(bracket_year_pattern, text_after_date)
@@ -356,6 +361,11 @@ def type_1_parser(citation):
             "isbn",
             "retrieved",
             "archived",
+            "motilal banarsidass",
+            "archana verma",
+            "foreign languages press",
+            "twenty-first century books",
+            "dover",
         ]
         # Find comma followed by publisher-like word or ISBN/retrieved/archived
         comma_pat = re.compile(
@@ -409,12 +419,18 @@ def type_1_parser(citation):
                     r"Publishers|Inc|Ltd|Co|Corp|Society|Bank|Affairs)",
                     # Working paper or report patterns
                     r"^\s*[A-Z][a-zA-Z\s]+(?:Working Paper|Report|Study|Series)",
+                    # Simple publisher names (like "Dover", "Twenty-First Century")
+                    r"^\s*[A-Z][a-zA-Z\s\-]+(?:Books|Press|Publishing|Publisher|"
+                    r"University|College|Institute|Society|Company|Corporation|"
+                    r"Inc|Ltd|Co|Corp)",
                     # Specific known publishers (fallback)
                     r"^\s*(?:press|publishing|publisher|university|blackwell|"
                     r"princeton|cambridge|oxford|harvard|yale|penguin|random house|"
                     r"simon & schuster|wiley|springer|elsevier|macmillan|routledge|"
                     r"academic press|london & new york|london|new york|washington|"
-                    r"regnery|world bank|fisheries society|publicaffairs)",
+                    r"regnery|world bank|fisheries society|publicaffairs|dover|"
+                    r"twenty-first century books|motilal banarsidass|archana verma|"
+                    r"foreign languages press)",
                 ]
 
                 is_publisher = False
@@ -462,6 +478,8 @@ def type_1_parser(citation):
             title = text_after_date.strip()
         # Remove (PDF) from title
         title = re.sub(r"\s*\(PDF\)\s*", "", title, flags=re.IGNORECASE)
+        # Remove bracketed content from title
+        title = re.sub(r"\s*\[.*?\]", "", title).strip()
         # Remove trailing period
         title = re.sub(r"\.+$", "", title).strip()
         result["title"] = title
@@ -1151,6 +1169,49 @@ def type_4_parser(citation):
         )
 
     return result
+
+
+def determine_parser_type(citation):
+    # Check for chapter citations (has quoted chapter titles)
+    if '"' in citation or (
+        "'" in citation and re.search(r"['\"][^'\"]*['\"]\\s*(?:in|In|\\.)", citation)
+    ):
+        return "type3"
+    # Check for editor citations (contains "(ed.)" or "(eds.)")
+    if "(ed." in citation or "(eds." in citation:
+        return "type5"
+    # Check for parenthetical dates (Type 1) - look for year in parentheses
+    if re.search(r"\([^)]*\d{4}[^)]*\)", citation):
+        return "type1"
+    # Check for standalone years (Type 2)
+    if re.search(r"\b(19|20)\d{2}\b", citation) and "(" not in citation:
+        return "type2"
+    # Default to Type 1 for unknown formats
+    return "type1"
+
+
+@app.route("/api/parse/batch", methods=["POST"])
+def parse_batch():
+    """Parse multiple citations in a single request"""
+    data = request.get_json()
+    citations = data.get("citations", [])
+    results = []
+    for citation in citations:
+        parser_type = determine_parser_type(citation)
+        if parser_type == "type1":
+            parsed = type_1_parser(citation)
+        elif parser_type == "type2":
+            parsed = type_2_parser(citation)
+        elif parser_type == "type3":
+            parsed = type_3_parser(citation)
+        elif parser_type == "type4":
+            parsed = type_4_parser(citation)
+        elif parser_type == "type5":
+            parsed = type_5_parser(citation)
+        else:
+            parsed = type_1_parser(citation)
+        results.append(parsed)
+    return jsonify({"results": results})
 
 
 @app.route("/")

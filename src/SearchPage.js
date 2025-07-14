@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 import './SearchPage.css';
 
 function SearchPage() {
@@ -10,74 +11,112 @@ function SearchPage() {
 
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
+  const sortOptions = [
+    { value: '', label: 'Sort by...' },
+    { value: 'Title A - Z', label: 'Title A - Z' },
+    { value: 'Title Z - A', label: 'Title Z - A' },
+    { value: 'Author A - Z', label: 'Author A - Z' },
+    { value: 'Author Z - A', label: 'Author Z - A' },
+    { value: 'Year Increasing', label: 'Year Increasing' },
+    { value: 'Year Decreasing', label: 'Year Decreasing' },
+  ];
+
+  const [sortDropdown, setSortDropdown] = useState(sortOptions[0]);
   const navigate = useNavigate();
 
-  // Function to determine which parser to use based on citation format
-  const determineParser = (citation) => {
-    console.log('Determining parser for citation:', citation);
+  // Function to get sortable value from citation (structured or unstructured)
+  const getSortableValue = (citation, index, sortType) => {
+    if (toggleStructured && parsedCitations[index]) {
+      const parsed = parsedCitations[index];
 
-    // Check for chapter citations (has quoted chapter titles)
-    if (
-      citation.includes('"') ||
-      (citation.includes("'") &&
-        citation.match(/['"][^'"]*['"]\s*(?:in|In|\.)/))
-    ) {
-      console.log('Selected type3 (quoted chapter title found)');
-      return 'type3'; // Chapter citations with quotes
+      switch (sortType) {
+        case 'Title A - Z':
+        case 'Title Z - A': {
+          return (
+            parsed.title || parsed.chapter_title || parsed.book_title || ''
+          );
+        }
+        case 'Author A - Z':
+        case 'Author Z - A': {
+          return (
+            parsed.authors ||
+            parsed.chapter_authors ||
+            parsed.book_authors ||
+            ''
+          );
+        }
+        case 'Year Increasing':
+        case 'Year Decreasing': {
+          return parsed.year ? parseInt(parsed.year) : 0;
+        }
+        default: {
+          return '';
+        }
+      }
+    } else {
+      // For unstructured view, try to extract basic info from raw citation
+      switch (sortType) {
+        case 'Title A - Z':
+        case 'Title Z - A': {
+          // Try to extract title from raw citation
+          const titleMatch = citation.match(/(?:\.\s*)([^.]+?)(?:\s*\.|$)/);
+          return titleMatch ? titleMatch[1].trim() : citation;
+        }
+        case 'Author A - Z':
+        case 'Author Z - A': {
+          // Try to extract author from beginning of citation
+          const authorMatch = citation.match(/^([^(]+?)(?:\s*\(|\.)/);
+          return authorMatch ? authorMatch[1].trim() : citation;
+        }
+        case 'Year Increasing':
+        case 'Year Decreasing': {
+          // Try to extract year from citation
+          const yearMatch = citation.match(/\b(19|20)\d{2}\b/);
+          return yearMatch ? parseInt(yearMatch[0]) : 0;
+        }
+        default: {
+          return '';
+        }
+      }
     }
-
-    // Check for editor citations (contains "(ed.)" or "(eds.)")
-    if (citation.includes('(ed.') || citation.includes('(eds.')) {
-      console.log('Selected type5 (editor found)');
-      return 'type5'; // Editor citations
-    }
-
-    // Check for parenthetical dates (Type 1) - look for year in parentheses
-    if (citation.match(/\([^)]*\d{4}[^)]*\)/)) {
-      console.log('Selected type1 (parenthetical year found)');
-      return 'type1';
-    }
-
-    // Check for standalone years (Type 2)
-    if (citation.match(/\b(19|20)\d{2}\b/) && !citation.includes('(')) {
-      console.log('Selected type2 (standalone year found)');
-      return 'type2';
-    }
-
-    // Default to Type 1 for unknown formats
-    console.log('Selected type1 (default)');
-    return 'type1';
   };
 
-  // Function to parse citation using backend parsers
-  const parseCitation = async (citation) => {
-    const parserType = determineParser(citation);
-    console.log(`Using parser: ${parserType} for citation:`, citation);
-
-    try {
-      const response = await fetch(
-        `http://localhost:5001/api/parse/${parserType}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ citation }),
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`Parser ${parserType} result:`, result);
-        return result;
-      } else {
-        console.error(`Failed to parse citation with ${parserType} parser`);
-        return null;
-      }
-    } catch (err) {
-      console.error('Error parsing citation:', err);
-      return null;
+  // Function to sort citations based on selected option
+  const sortCitations = (citations, sortType) => {
+    if (!sortType || sortType === '') {
+      return citations; // No sorting, return original order
     }
+
+    const sortedCitations = [...citations].sort((a, b) => {
+      const aIndex = citations.indexOf(a);
+      const bIndex = citations.indexOf(b);
+
+      const aValue = getSortableValue(a, aIndex, sortType);
+      const bValue = getSortableValue(b, bIndex, sortType);
+
+      // Handle numeric sorting for years
+      if (sortType.includes('Year')) {
+        if (sortType === 'Year Increasing') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      }
+
+      // Handle string sorting for titles and authors
+      const comparison = aValue.localeCompare(bValue, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+
+      if (sortType.includes('Z - A')) {
+        return -comparison;
+      } else {
+        return comparison;
+      }
+    });
+
+    return sortedCitations;
   };
 
   // Function to render structured citation
@@ -167,6 +206,7 @@ function SearchPage() {
       setSearchResults(null);
       setParsedCitations({});
       setToggleStructured(false); // Reset toggle to off for new searches
+      setSortDropdown(sortOptions[0]); // Reset sort to default
 
       try {
         const response = await fetch('http://localhost:5001/api/search', {
@@ -201,29 +241,49 @@ function SearchPage() {
     setSearchResults(null);
     setError(null);
     setParsedCitations({});
+    setSortDropdown(sortOptions[0]); // Reset sort to default
   };
 
   const handleToggleStructured = async () => {
     const newToggleState = !toggleStructured;
     setToggleStructured(newToggleState);
 
-    // If turning on structured view, parse ALL citations (not just displayed ones)
+    // If turning on structured view, parse ALL citations in a single batch request
     if (newToggleState && searchResults?.citations) {
-      const newParsedCitations = {};
-
-      // Parse all citations in the search results
-      for (let i = 0; i < searchResults.citations.length; i++) {
-        const parsed = await parseCitation(searchResults.citations[i]);
-        if (parsed) {
-          newParsedCitations[i] = parsed;
+      try {
+        const response = await fetch('http://localhost:5001/api/parse/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ citations: searchResults.citations }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // data.results is an array of parsed citations
+          const newParsedCitations = {};
+          data.results.forEach((parsed, i) => {
+            newParsedCitations[i] = parsed;
+          });
+          setParsedCitations(newParsedCitations);
+        } else {
+          setError('Failed to parse citations in batch.');
         }
+      } catch (err) {
+        setError('Network error during batch parsing.');
+        console.error('Batch parse error:', err);
       }
-
-      setParsedCitations(newParsedCitations);
     }
   };
 
-  const displayedCitations = searchResults?.citations || [];
+  const handleSortChange = (selectedOption) => {
+    setSortDropdown(selectedOption);
+  };
+
+  // Get sorted citations based on current sort selection
+  const displayedCitations = searchResults?.citations
+    ? sortCitations(searchResults.citations, sortDropdown.value)
+    : [];
 
   return (
     <div className="search-page">
@@ -261,6 +321,76 @@ function SearchPage() {
           <div className="results-section">
             <div className="results-header">
               <div className="header-controls">
+                <div className="sort-dropdown-wrapper">
+                  <Select
+                    classNamePrefix="sort-dropdown"
+                    value={sortDropdown}
+                    onChange={handleSortChange}
+                    options={sortOptions}
+                    isSearchable={false}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        background: 'rgba(255,255,255,0.95)',
+                        borderColor: state.isFocused
+                          ? 'rgba(255,213,0,0.6)'
+                          : 'rgba(44,24,16,0.3)',
+                        boxShadow: state.isFocused
+                          ? '0 0 0 3px rgba(255,213,0,0.2)'
+                          : '0 2px 4px rgba(0,0,0,0.1)',
+                        borderRadius: 8,
+                        minWidth: 140,
+                        height: 30,
+                        minHeight: 30,
+                        padding: '0 8px',
+                        fontFamily: 'Almendra, serif',
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: '#2c1810',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'rgba(44,24,16,0.5)',
+                          background: 'rgba(255,255,255,1)',
+                        },
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        background: 'rgba(255,255,255,0.98)',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                        fontFamily: 'Almendra, serif',
+                        color: '#2c1810',
+                        marginTop: 2,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        background: state.isSelected
+                          ? 'rgba(255,213,0,0.2)'
+                          : state.isFocused
+                            ? 'rgba(255,213,0,0.1)'
+                            : 'rgba(255,255,255,0.98)',
+                        color: '#2c1810',
+                        fontFamily: 'Almendra, serif',
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        padding: '10px 16px',
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: '#2c1810',
+                        fontFamily: 'Almendra, serif',
+                        fontWeight: 500,
+                      }),
+                      dropdownIndicator: (base) => ({
+                        ...base,
+                        color: '#2c1810',
+                        '&:hover': { color: '#2c1810' },
+                      }),
+                      indicatorSeparator: () => ({ display: 'none' }),
+                    }}
+                  />
+                </div>
                 <div className="toggle-switch">
                   <input
                     type="checkbox"
@@ -279,7 +409,7 @@ function SearchPage() {
               </div>
             </div>
 
-            {searchResults.citations.length > 0 ? (
+            {displayedCitations.length > 0 ? (
               <div className="citations-container">
                 {toggleStructured
                   ? displayedCitations.map((citation, index) =>
