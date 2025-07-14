@@ -24,8 +24,6 @@ function SearchPage() {
   const [sortDropdown, setSortDropdown] = useState(sortOptions[0]);
   const navigate = useNavigate();
 
-
-
   // Function to get sortable value from citation (structured or unstructured)
   const getSortableValue = (citation, index, sortType) => {
     if (toggleStructured && parsedCitations[index]) {
