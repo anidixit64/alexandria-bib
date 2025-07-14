@@ -8,6 +8,7 @@ function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [showAllCitations, setShowAllCitations] = useState(false);
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
   const navigate = useNavigate();
@@ -136,6 +137,7 @@ function SearchPage() {
       setIsLoading(true);
       setError(null);
       setSearchResults(null);
+      setShowAllCitations(false);
       setParsedCitations({});
       setToggleStructured(false); // Reset toggle to off for new searches
 
@@ -168,9 +170,35 @@ function SearchPage() {
     navigate('/');
   };
 
+  const toggleCitations = () => {
+    setShowAllCitations(!showAllCitations);
+    
+    // If structured view is enabled and we're expanding to show all citations,
+    // make sure all citations are parsed
+    if (toggleStructured && !showAllCitations && searchResults?.citations) {
+      // Check if we need to parse any additional citations
+      const needsParsing = searchResults.citations.some((_, index) => !parsedCitations[index]);
+      
+      if (needsParsing) {
+        // Parse any missing citations
+        const newParsedCitations = { ...parsedCitations };
+        for (let i = 0; i < searchResults.citations.length; i++) {
+          if (!newParsedCitations[i]) {
+            parseCitation(searchResults.citations[i]).then(parsed => {
+              if (parsed) {
+                setParsedCitations(prev => ({ ...prev, [i]: parsed }));
+              }
+            });
+          }
+        }
+      }
+    }
+  };
+
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
+    setShowAllCitations(false);
     setParsedCitations({});
   };
 
@@ -196,7 +224,9 @@ function SearchPage() {
     }
   };
 
-  const displayedCitations = searchResults?.citations || [];
+  const displayedCitations =
+    searchResults?.citations?.slice(0, showAllCitations ? undefined : 5) || [];
+  const hasMoreCitations = searchResults?.citations?.length > 5;
 
   return (
     <div className="search-page">
@@ -268,6 +298,25 @@ function SearchPage() {
                     ))
                 }
 
+                {hasMoreCitations && !showAllCitations && (
+                  <div className="citations-expand">
+                    <span className="ellipsis">...</span>
+                    <button className="expand-button" onClick={toggleCitations}>
+                      Show All {searchResults.citations.length} Citations
+                    </button>
+                  </div>
+                )}
+
+                {hasMoreCitations && showAllCitations && (
+                  <div className="citations-collapse">
+                    <button
+                      className="collapse-button"
+                      onClick={toggleCitations}
+                    >
+                      Show Less
+                    </button>
+                  </div>
+                )}
 
               </div>
             ) : (
