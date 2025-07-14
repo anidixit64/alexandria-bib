@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import './SearchPage.css';
+import scrollLogo from './scroll_logo.png';
 
 function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -291,7 +292,10 @@ function SearchPage() {
         <button className="back-button" onClick={handleBackToHome}>
           ← Back to Alexandria
         </button>
-        <h1 className="search-title">Explore the Library</h1>
+        <div className="header-title-section">
+          <img src={scrollLogo} alt="Alexandria Logo" className="header-logo" />
+          <h1 className="search-title">Explore the Library</h1>
+        </div>
       </header>
 
       <main className="search-main">

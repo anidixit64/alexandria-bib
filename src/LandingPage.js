@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './App.css';
 import libraryImage from './library.jpg';
 import parchmentImage from './parchment.jpg';
+import scrollLogo from './scroll_logo.png';
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -30,6 +31,9 @@ function LandingPage() {
   return (
     <div className="App" style={appStyle}>
       <header className="App-header">
+        <div className="logo-container">
+          <img src={scrollLogo} alt="Alexandria Logo" className="site-logo" />
+        </div>
         <div className="curved-text">
           {title.split('').map((letter, index) => (
             <span key={index} className={`letter-${index}`}>
