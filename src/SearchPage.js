@@ -19,6 +19,11 @@ function SearchPage() {
       return 'type3'; // Chapter citations with quotes
     }
     
+    // Check for editor citations (contains "(ed.)" or "(eds.)")
+    if (citation.includes('(ed.') || citation.includes('(eds.')) {
+      return 'type5'; // Editor citations
+    }
+    
     // Check for parenthetical dates (Type 1)
     if (citation.includes('(') && citation.match(/\([^)]*\d{4}[^)]*\)/)) {
       return 'type1';
@@ -113,6 +118,11 @@ function SearchPage() {
             <div className="book-author">
               <strong>Author:</strong> {parsed.authors || 'Unknown'}
             </div>
+            {parsed.editor && (
+              <div className="book-author">
+                <strong>Editor:</strong> {parsed.editor}
+              </div>
+            )}
             {parsed.year && <div className="year">{parsed.year}</div>}
             {parsed.isbn && (
               <div className="isbn">

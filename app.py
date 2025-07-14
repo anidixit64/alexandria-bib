@@ -745,6 +745,127 @@ def type_2_parser(citation):
     return result
 
 
+def type_5_parser(citation):
+    """
+    Parse Type V citations that have editors in parentheses.
+    Extracts authors, year, editor, title, and ISBN from the citation.
+
+    Format: Authors (year). Editor (ed.). Title. Publisher. ISBN.
+
+    Args:
+        citation (str): A citation string that contains editor information
+
+    Returns:
+        dict: Parsed citation data with authors, year, editor, title, isbn, and
+        remaining_text fields
+    """
+    if not citation:
+        return {
+            "authors": None,
+            "year": None,
+            "editor": None,
+            "title": None,
+            "isbn": None,
+            "remaining_text": citation,
+        }
+
+    # Initialize result
+    result = {
+        "authors": None,
+        "year": None,
+        "editor": None,
+        "title": None,
+        "isbn": None,
+        "remaining_text": citation,
+    }
+
+    # Extract year/date from parentheses
+    date_pattern = r"\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)"
+    date_match = re.search(date_pattern, citation, re.IGNORECASE)
+
+    if date_match:
+        date_text = date_match.group(0)
+        date_start = date_match.start()
+        date_end = date_match.end()
+
+        # Extract authors from everything before the parentheses
+        authors = citation[:date_start].strip()
+        result["authors"] = authors
+
+        # Extract just the year (4 digits)
+        year_match = re.search(r"\d{4}", date_text)
+        if year_match:
+            result["year"] = year_match.group(0)
+
+        # Extract text after the date
+        text_after_date = citation[date_end:].strip()
+        if text_after_date.startswith("."):
+            text_after_date = text_after_date[1:].strip()
+
+        # Look for editor pattern: Name (ed.)
+        editor_pattern = r"([^\(]+)\s*\(ed\.\)"
+        editor_match = re.search(editor_pattern, text_after_date, re.IGNORECASE)
+
+        if editor_match:
+            editor = editor_match.group(1).strip()
+            result["editor"] = editor
+
+            # Get text after the editor
+            text_after_editor = text_after_date[editor_match.end():].strip()
+            
+            # Clean up leading punctuation
+            text_after_editor = re.sub(r"^[\.,\s]+", "", text_after_editor)
+
+            # Extract title (everything up to the next period or publisher keywords)
+            publisher_keywords = [
+                "press", "publishing", "publisher", "university", "blackwell",
+                "princeton", "cambridge", "oxford", "harvard", "yale", "penguin",
+                "random house", "simon & schuster", "wiley", "springer", "elsevier",
+                "macmillan", "routledge", "academic press", "london & new york",
+                "london", "new york", "facts on file", "isbn", "retrieved", "archived"
+            ]
+
+            # Find the next period or publisher keyword
+            stop_patterns = [r"\."] + [rf"\b{re.escape(kw)}\b" for kw in publisher_keywords]
+            stops = []
+            
+            for pattern in stop_patterns:
+                matches = list(re.finditer(pattern, text_after_editor, re.IGNORECASE))
+                for match in matches:
+                    pos = match.start()
+                    # Count parentheses before this position
+                    open_parens = text_after_editor[:pos].count("(")
+                    close_parens = text_after_editor[:pos].count(")")
+                    # If we're inside parentheses, skip this stop
+                    if open_parens > close_parens:
+                        continue
+                    stops.append(pos)
+
+            if stops:
+                stop_index = min(stops)
+                title = text_after_editor[:stop_index].strip()
+                result["title"] = title
+                result["remaining_text"] = text_after_editor[stop_index:].strip()
+            else:
+                result["title"] = text_after_editor.strip()
+                result["remaining_text"] = ""
+        else:
+            # No editor found, treat as regular citation
+            result["remaining_text"] = text_after_date
+
+    # Extract ISBN
+    isbn_pattern = r"ISBN\s+([0-9\-]+)"
+    isbn_match = re.search(isbn_pattern, result["remaining_text"], re.IGNORECASE)
+
+    if isbn_match:
+        result["isbn"] = isbn_match.group(1)
+        # Remove the entire ISBN from the remaining text
+        isbn_full = isbn_match.group(0)
+        result["remaining_text"] = result["remaining_text"].replace(isbn_full, "").strip()
+
+    return result
+
+
 def type_4_parser(citation):
     """
     Parse Type IV citations that have quoted chapter titles without parenthetical
@@ -977,6 +1098,22 @@ def parse_type3():
         return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type3: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type5", methods=["POST"])
+def parse_type5():
+    """Parse Type V citations using the type_5_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+        
+        result = type_5_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type5: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
