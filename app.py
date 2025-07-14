@@ -191,7 +191,15 @@ def extract_book_citations(html_content):
             unique_citations.append(citation)
             seen.add(citation)
 
-    return unique_citations
+    # Filter to only include citations with dates in parentheses
+    filtered_citations = []
+    date_pattern = r"\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)"
+
+    for citation in unique_citations:
+        if re.search(date_pattern, citation, re.IGNORECASE):
+            filtered_citations.append(citation)
+
+    return filtered_citations
 
 
 def clean_citation(citation):
