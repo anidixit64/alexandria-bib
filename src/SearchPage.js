@@ -24,42 +24,7 @@ function SearchPage() {
   const [sortDropdown, setSortDropdown] = useState(sortOptions[0]);
   const navigate = useNavigate();
 
-  // Function to determine which parser to use based on citation format
-  const determineParser = (citation) => {
-    console.log('Determining parser for citation:', citation);
 
-    // Check for chapter citations (has quoted chapter titles)
-    if (
-      citation.includes('"') ||
-      (citation.includes("'") &&
-        citation.match(/['"][^'"]*['"]\s*(?:in|In|\.)/))
-    ) {
-      console.log('Selected type3 (quoted chapter title found)');
-      return 'type3'; // Chapter citations with quotes
-    }
-
-    // Check for editor citations (contains "(ed.)" or "(eds.)")
-    if (citation.includes('(ed.') || citation.includes('(eds.')) {
-      console.log('Selected type5 (editor found)');
-      return 'type5'; // Editor citations
-    }
-
-    // Check for parenthetical dates (Type 1) - look for year in parentheses
-    if (citation.match(/\([^)]*\d{4}[^)]*\)/)) {
-      console.log('Selected type1 (parenthetical year found)');
-      return 'type1';
-    }
-
-    // Check for standalone years (Type 2)
-    if (citation.match(/\b(19|20)\d{2}\b/) && !citation.includes('(')) {
-      console.log('Selected type2 (standalone year found)');
-      return 'type2';
-    }
-
-    // Default to Type 1 for unknown formats
-    console.log('Selected type1 (default)');
-    return 'type1';
-  };
 
   // Function to get sortable value from citation (structured or unstructured)
   const getSortableValue = (citation, index, sortType) => {
