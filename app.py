@@ -429,7 +429,7 @@ def type_1_parser(citation):
                     r"academic press|london & new york|london|new york|washington|"
                     r"regnery|world bank|fisheries society|publicaffairs|dover|"
                     r"twenty-first century books|motilal banarsidass|archana verma|"
-                    r"foreign languages press)"
+                    r"foreign languages press)",
                 ]
 
                 is_publisher = False
