@@ -192,9 +192,11 @@ describe('SearchPage Component', () => {
     await waitFor(() => {
       // Check that the dropdown is present and shows the default value
       expect(screen.getByText('Sort by...')).toBeInTheDocument();
-      
+
       // Check that the dropdown container is present
-      const dropdownContainer = document.querySelector('.sort-dropdown-wrapper');
+      const dropdownContainer = document.querySelector(
+        '.sort-dropdown-wrapper'
+      );
       expect(dropdownContainer).toBeInTheDocument();
     });
   });

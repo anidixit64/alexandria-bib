@@ -357,9 +357,7 @@ class TestType3Parser(unittest.TestCase):
         self.assertNotIn("Mead, J. G.; Brownell, R. L. Jr.", result["remaining_text"])
         self.assertNotIn("Order Cetacea", result["remaining_text"])
         self.assertNotIn("Wilson, D. E.; Reeder, D. M.", result["remaining_text"])
-        self.assertNotIn(
-            "Mammal Species of the World", result["remaining_text"]
-        )
+        self.assertNotIn("Mammal Species of the World", result["remaining_text"])
         self.assertNotIn("(2005)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
 

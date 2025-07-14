@@ -65,15 +65,22 @@ function SearchPage() {
   const getSortableValue = (citation, index, sortType) => {
     if (toggleStructured && parsedCitations[index]) {
       const parsed = parsedCitations[index];
-      
+
       switch (sortType) {
         case 'Title A - Z':
         case 'Title Z - A': {
-          return parsed.title || parsed.chapter_title || parsed.book_title || '';
+          return (
+            parsed.title || parsed.chapter_title || parsed.book_title || ''
+          );
         }
         case 'Author A - Z':
         case 'Author Z - A': {
-          return parsed.authors || parsed.chapter_authors || parsed.book_authors || '';
+          return (
+            parsed.authors ||
+            parsed.chapter_authors ||
+            parsed.book_authors ||
+            ''
+          );
         }
         case 'Year Increasing':
         case 'Year Decreasing': {
@@ -120,7 +127,7 @@ function SearchPage() {
     const sortedCitations = [...citations].sort((a, b) => {
       const aIndex = citations.indexOf(a);
       const bIndex = citations.indexOf(b);
-      
+
       const aValue = getSortableValue(a, aIndex, sortType);
       const bValue = getSortableValue(b, bIndex, sortType);
 
@@ -134,9 +141,9 @@ function SearchPage() {
       }
 
       // Handle string sorting for titles and authors
-      const comparison = aValue.localeCompare(bValue, undefined, { 
-        numeric: true, 
-        sensitivity: 'base' 
+      const comparison = aValue.localeCompare(bValue, undefined, {
+        numeric: true,
+        sensitivity: 'base',
       });
 
       if (sortType.includes('Z - A')) {
@@ -311,7 +318,7 @@ function SearchPage() {
   };
 
   // Get sorted citations based on current sort selection
-  const displayedCitations = searchResults?.citations 
+  const displayedCitations = searchResults?.citations
     ? sortCitations(searchResults.citations, sortDropdown.value)
     : [];
 
@@ -362,8 +369,12 @@ function SearchPage() {
                       control: (base, state) => ({
                         ...base,
                         background: 'rgba(255,255,255,0.95)',
-                        borderColor: state.isFocused ? 'rgba(255,213,0,0.6)' : 'rgba(44,24,16,0.3)',
-                        boxShadow: state.isFocused ? '0 0 0 3px rgba(255,213,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
+                        borderColor: state.isFocused
+                          ? 'rgba(255,213,0,0.6)'
+                          : 'rgba(44,24,16,0.3)',
+                        boxShadow: state.isFocused
+                          ? '0 0 0 3px rgba(255,213,0,0.2)'
+                          : '0 2px 4px rgba(0,0,0,0.1)',
                         borderRadius: 8,
                         minWidth: 140,
                         height: 30,
@@ -394,8 +405,8 @@ function SearchPage() {
                         background: state.isSelected
                           ? 'rgba(255,213,0,0.2)'
                           : state.isFocused
-                          ? 'rgba(255,213,0,0.1)'
-                          : 'rgba(255,255,255,0.98)',
+                            ? 'rgba(255,213,0,0.1)'
+                            : 'rgba(255,255,255,0.98)',
                         color: '#2c1810',
                         fontFamily: 'Almendra, serif',
                         fontSize: 15,

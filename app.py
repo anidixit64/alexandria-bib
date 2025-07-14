@@ -325,7 +325,7 @@ def type_1_parser(citation):
         bracket_phrase_pattern = r"^\[.*?\]\.?\s*"
         bracket_phrase_match = re.match(bracket_phrase_pattern, text_after_date)
         if bracket_phrase_match:
-            text_after_date = text_after_date[bracket_phrase_match.end():].strip()
+            text_after_date = text_after_date[bracket_phrase_match.end() :].strip()
         # Skip over additional years in brackets like [1961]
         bracket_year_pattern = r"^\s*\[\d{4}\]\s*\.?\s*"
         bracket_match = re.match(bracket_year_pattern, text_after_date)
@@ -1172,22 +1172,22 @@ def type_4_parser(citation):
 
 def determine_parser_type(citation):
     # Check for chapter citations (has quoted chapter titles)
-    if (
-        '"' in citation or
-        ("'" in citation and re.search(r"['\"][^'\"]*['\"]\\s*(?:in|In|\\.)", citation))
+    if '"' in citation or (
+        "'" in citation and re.search(r"['\"][^'\"]*['\"]\\s*(?:in|In|\\.)", citation)
     ):
-        return 'type3'
+        return "type3"
     # Check for editor citations (contains "(ed.)" or "(eds.)")
     if "(ed." in citation or "(eds." in citation:
-        return 'type5'
+        return "type5"
     # Check for parenthetical dates (Type 1) - look for year in parentheses
     if re.search(r"\([^)]*\d{4}[^)]*\)", citation):
-        return 'type1'
+        return "type1"
     # Check for standalone years (Type 2)
     if re.search(r"\b(19|20)\d{2}\b", citation) and "(" not in citation:
-        return 'type2'
+        return "type2"
     # Default to Type 1 for unknown formats
-    return 'type1'
+    return "type1"
+
 
 @app.route("/api/parse/batch", methods=["POST"])
 def parse_batch():
@@ -1197,15 +1197,15 @@ def parse_batch():
     results = []
     for citation in citations:
         parser_type = determine_parser_type(citation)
-        if parser_type == 'type1':
+        if parser_type == "type1":
             parsed = type_1_parser(citation)
-        elif parser_type == 'type2':
+        elif parser_type == "type2":
             parsed = type_2_parser(citation)
-        elif parser_type == 'type3':
+        elif parser_type == "type3":
             parsed = type_3_parser(citation)
-        elif parser_type == 'type4':
+        elif parser_type == "type4":
             parsed = type_4_parser(citation)
-        elif parser_type == 'type5':
+        elif parser_type == "type5":
             parsed = type_5_parser(citation)
         else:
             parsed = type_1_parser(citation)
