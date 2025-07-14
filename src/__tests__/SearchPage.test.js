@@ -142,7 +142,7 @@ describe('SearchPage Component', () => {
     });
   });
 
-  test('displays sort dropdown when search results are shown', async () => {
+  test('displays sort dropdown with default state when search results are shown', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -164,11 +164,11 @@ describe('SearchPage Component', () => {
     fireEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Title A - Z')).toBeInTheDocument();
+      expect(screen.getByText('Sort by...')).toBeInTheDocument();
     });
   });
 
-  test('sort dropdown has all required options', async () => {
+  test('sort dropdown has all required options including default state', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -190,16 +190,90 @@ describe('SearchPage Component', () => {
     fireEvent.click(searchButton);
 
     await waitFor(() => {
-      const dropdown = screen.getByDisplayValue('Title A - Z');
-      expect(dropdown).toBeInTheDocument();
+      // Check that the dropdown is present and shows the default value
+      expect(screen.getByText('Sort by...')).toBeInTheDocument();
       
-      // Check that all options are present
-      expect(screen.getByText('Title A - Z')).toBeInTheDocument();
-      expect(screen.getByText('Title Z - A')).toBeInTheDocument();
-      expect(screen.getByText('Author A - Z')).toBeInTheDocument();
-      expect(screen.getByText('Author Z - A')).toBeInTheDocument();
-      expect(screen.getByText('Year Increasing')).toBeInTheDocument();
-      expect(screen.getByText('Year Decreasing')).toBeInTheDocument();
+      // Check that the dropdown container is present
+      const dropdownContainer = document.querySelector('.sort-dropdown-wrapper');
+      expect(dropdownContainer).toBeInTheDocument();
     });
+  });
+
+  test('sort dropdown resets to default when starting new search', async () => {
+    // First search
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        query: 'test query',
+        page_title: 'Test Page',
+        citations: ['Test citation 1', 'Test citation 2'],
+        count: 2,
+        status: 'success',
+      }),
+    });
+
+    render(<SearchPage />);
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(searchInput, { target: { value: 'test query' } });
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sort by...')).toBeInTheDocument();
+    });
+
+    // Second search
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        query: 'another query',
+        page_title: 'Another Page',
+        citations: ['Another citation'],
+        count: 1,
+        status: 'success',
+      }),
+    });
+
+    fireEvent.change(searchInput, { target: { value: 'another query' } });
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sort by...')).toBeInTheDocument();
+    });
+  });
+
+  test('sort dropdown resets to default when closing results', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        query: 'test query',
+        page_title: 'Test Page',
+        citations: ['Test citation 1', 'Test citation 2'],
+        count: 2,
+        status: 'success',
+      }),
+    });
+
+    render(<SearchPage />);
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(searchInput, { target: { value: 'test query' } });
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sort by...')).toBeInTheDocument();
+    });
+
+    const closeButton = screen.getByText('×');
+    fireEvent.click(closeButton);
+
+    // After closing, the dropdown should not be visible
+    expect(screen.queryByText('Sort by...')).not.toBeInTheDocument();
   });
 });

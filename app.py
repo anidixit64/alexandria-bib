@@ -1170,6 +1170,49 @@ def type_4_parser(citation):
     return result
 
 
+def determine_parser_type(citation):
+    # Check for chapter citations (has quoted chapter titles)
+    if (
+        '"' in citation or
+        ("'" in citation and re.search(r"['\"][^'\"]*['\"]\\s*(?:in|In|\\.)", citation))
+    ):
+        return 'type3'
+    # Check for editor citations (contains "(ed.)" or "(eds.)")
+    if "(ed." in citation or "(eds." in citation:
+        return 'type5'
+    # Check for parenthetical dates (Type 1) - look for year in parentheses
+    if re.search(r"\([^)]*\d{4}[^)]*\)", citation):
+        return 'type1'
+    # Check for standalone years (Type 2)
+    if re.search(r"\b(19|20)\d{2}\b", citation) and "(" not in citation:
+        return 'type2'
+    # Default to Type 1 for unknown formats
+    return 'type1'
+
+@app.route("/api/parse/batch", methods=["POST"])
+def parse_batch():
+    """Parse multiple citations in a single request"""
+    data = request.get_json()
+    citations = data.get("citations", [])
+    results = []
+    for citation in citations:
+        parser_type = determine_parser_type(citation)
+        if parser_type == 'type1':
+            parsed = type_1_parser(citation)
+        elif parser_type == 'type2':
+            parsed = type_2_parser(citation)
+        elif parser_type == 'type3':
+            parsed = type_3_parser(citation)
+        elif parser_type == 'type4':
+            parsed = type_4_parser(citation)
+        elif parser_type == 'type5':
+            parsed = type_5_parser(citation)
+        else:
+            parsed = type_1_parser(citation)
+        results.append(parsed)
+    return jsonify({"results": results})
+
+
 @app.route("/")
 def home():
     return jsonify(
