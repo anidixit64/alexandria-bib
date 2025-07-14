@@ -197,7 +197,6 @@ function SearchPage() {
   };
 
   const displayedCitations = searchResults?.citations || [];
-  const hasMoreCitations = false; // No longer needed since we show all citations
 
   return (
     <div className="search-page">
