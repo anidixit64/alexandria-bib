@@ -11,6 +11,7 @@ module.exports = {
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.{js,jsx}',
     '<rootDir>/src/**/*.{test,spec}.{js,jsx}',
+    '<rootDir>/tests/frontend/**/*.{test,spec}.{js,jsx}',
   ],
   collectCoverageFrom: [
     'src/**/*.{js,jsx}',

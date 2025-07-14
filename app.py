@@ -351,6 +351,8 @@ def type_1_parser(citation):
             "london & new york",
             "london",
             "new york",
+            "washington",
+            "regnery",
             "isbn",
             "retrieved",
             "archived",
@@ -369,6 +371,7 @@ def type_1_parser(citation):
                     break
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived'
         # But don't stop at parentheses that are part of the title
+        # Also be smarter about periods in names (like "Ulysses S. Grant")
         stop_patterns = [
             r"\.",
             r"ISBN",
@@ -378,7 +381,67 @@ def type_1_parser(citation):
             r"\s+archived",
         ]
         stops = []
+
+        # Check for periods, but be smarter about periods in names and
+        # publisher detection
+        period_matches = list(re.finditer(r"\.", text_after_date))
+        for match in period_matches:
+            pos = match.start()
+            # Count parentheses before this position
+            open_parens = text_after_date[:pos].count("(")
+            close_parens = text_after_date[:pos].count(")")
+            # If we're inside parentheses, skip this stop
+            if open_parens > close_parens:
+                continue
+
+            # Check if this period is followed by publisher-like content
+            text_after_period = text_after_date[pos + 1 :]
+            if text_after_period:
+                import re as _re
+
+                # Look for publisher patterns (more robust than hardcoded keywords)
+                publisher_patterns = [
+                    # Location: Publisher pattern (e.g., "New York: Random House",
+                    # "Bethesda, MD: American Fisheries Society")
+                    r"^\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2})?\s*:\s*[A-Z]",
+                    # Publisher ending with common words
+                    r"^\s*[A-Z][a-zA-Z\s&]+(?:Press|Publishing|University|Books|"
+                    r"Publishers|Inc|Ltd|Co|Corp|Society|Bank|Affairs)",
+                    # Working paper or report patterns
+                    r"^\s*[A-Z][a-zA-Z\s]+(?:Working Paper|Report|Study|Series)",
+                    # Specific known publishers (fallback)
+                    r"^\s*(?:press|publishing|publisher|university|blackwell|"
+                    r"princeton|cambridge|oxford|harvard|yale|penguin|random house|"
+                    r"simon & schuster|wiley|springer|elsevier|macmillan|routledge|"
+                    r"academic press|london & new york|london|new york|washington|"
+                    r"regnery|world bank|fisheries society|publicaffairs)",
+                ]
+
+                is_publisher = False
+                for pattern in publisher_patterns:
+                    if _re.search(pattern, text_after_period, _re.IGNORECASE):
+                        stops.append(pos)
+                        is_publisher = True
+                        break
+
+                if not is_publisher:
+                    # Check for initials or capitalized surname (likely part of title)
+                    initial_or_surname = _re.match(
+                        r"^\s+[A-Z](\.|\b)|^\s+[A-Z][a-z]+", text_after_period
+                    )
+                    if initial_or_surname:
+                        continue  # skip this period, it's part of an initial or surname
+                    # Otherwise, if it's a new sentence (capital letter), treat as stop
+                    if (
+                        text_after_period.strip()
+                        and text_after_period.strip()[0].isupper()
+                    ):
+                        stops.append(pos)
+
+        # Also check for other stop patterns
         for pat in stop_patterns:
+            if pat == r"\.":  # Skip periods as we already handled them above
+                continue
             matches = list(re.finditer(pat, text_after_date, re.IGNORECASE))
             for match in matches:
                 # Check if this stop is inside parentheses (part of title)
@@ -502,8 +565,8 @@ def type_3_parser(citation):
             # Get text after the quoted chapter title
             text_after_quote = text_after_date[quote_match.end() :].strip()
 
-            # Clean up text_after_quote for leading commas/whitespace
-            text_after_quote = text_after_quote.lstrip(", ").strip()
+            # Clean up text_after_quote for leading commas/whitespace/periods
+            text_after_quote = text_after_quote.lstrip(", . ").strip()
             # Look for "in" followed by book authors and "(eds.)"
             in_pattern = r"in\s+([^\(]+\(eds?\.\))[,\.]"
             in_match = re.search(in_pattern, text_after_quote, re.IGNORECASE)
@@ -513,36 +576,108 @@ def type_3_parser(citation):
                 result["book_authors"] = book_authors
                 # Get text after the "in... (eds.)," or "." part
                 text_after_in = text_after_quote[in_match.end() :].strip()
-                # Extract book title (everything up to the next comma, or period
-                # if no comma)
-                comma_index = text_after_in.find(",")
-                if comma_index != -1:
-                    book_title = text_after_in[:comma_index].strip()
+
+                # Extract book title (everything up to the next period or comma)
+                # Look for the first period or comma that's not inside parentheses
+                stop_index = -1
+                paren_count = 0
+
+                for i, char in enumerate(text_after_in):
+                    if char == "(":
+                        paren_count += 1
+                    elif char == ")":
+                        paren_count -= 1
+                    elif paren_count == 0 and (char == "." or char == ","):
+                        stop_index = i
+                        break
+
+                if stop_index != -1:
+                    book_title = text_after_in[:stop_index].strip()
                     result["book_title"] = book_title
-                    result["remaining_text"] = text_after_in[comma_index + 1 :].strip()
+                    result["remaining_text"] = text_after_in[stop_index + 1 :].strip()
                 else:
-                    # Fallback to previous logic: up to the next period
-                    book_title_pattern = r"^(.*?\([^)]*\))?[^.]*\."
-                    book_title_match = re.match(book_title_pattern, text_after_in)
-                    if book_title_match:
-                        book_title = book_title_match.group(0).strip()
-                        if book_title.endswith("."):
-                            book_title = book_title[:-1]
-                        result["book_title"] = book_title
-                        idx = len(book_title_match.group(0))
-                        result["remaining_text"] = text_after_in[idx:].strip()
+                    # If no clear stop found, take the first word/phrase
+                    # This handles cases where the book title is a single word
+                    words = text_after_in.split()
+                    if words:
+                        result["book_title"] = words[0]
+                        result["remaining_text"] = " ".join(words[1:])
                     else:
-                        next_period_index = text_after_in.find(".")
-                        if next_period_index != -1:
-                            book_title = text_after_in[:next_period_index].strip()
-                            result["book_title"] = book_title
-                            idx = next_period_index + 1
-                            result["remaining_text"] = text_after_in[idx:].strip()
-                        else:
-                            result["book_title"] = text_after_in
-                            result["remaining_text"] = ""
+                        result["book_title"] = text_after_in
+                        result["remaining_text"] = ""
             else:
-                result["remaining_text"] = text_after_quote
+                # No "in ... (eds.)" pattern found, try to extract book title directly
+                # Look for patterns like "Book Title. Vol. X" or "Book Title. Publisher"
+                # First, try to find a period followed by "Vol." or publisher keywords
+                publisher_keywords = [
+                    "press",
+                    "publishing",
+                    "publisher",
+                    "university",
+                    "blackwell",
+                    "princeton",
+                    "cambridge",
+                    "oxford",
+                    "harvard",
+                    "yale",
+                    "penguin",
+                    "random house",
+                    "simon & schuster",
+                    "wiley",
+                    "springer",
+                    "elsevier",
+                    "macmillan",
+                    "routledge",
+                    "academic press",
+                    "london & new york",
+                    "london",
+                    "new york",
+                    "washington",
+                    "regnery",
+                    "isbn",
+                    "retrieved",
+                    "archived",
+                ]
+
+                # Look for "Vol." pattern first
+                vol_pattern = r"\.\s*Vol\.\s*\d+"
+                vol_match = re.search(vol_pattern, text_after_quote, re.IGNORECASE)
+
+                if vol_match:
+                    # Extract everything up to and including "Vol. X"
+                    vol_end = vol_match.end()
+                    book_title = text_after_quote[:vol_end].strip()
+                    result["book_title"] = book_title
+                    result["remaining_text"] = text_after_quote[vol_end:].strip()
+                else:
+                    # Look for publisher keywords after a period
+                    stop_index = -1
+                    for keyword in publisher_keywords:
+                        pattern = rf"\.\s*{re.escape(keyword)}"
+                        match = re.search(pattern, text_after_quote, re.IGNORECASE)
+                        if match:
+                            stop_index = match.start()
+                            break
+
+                    if stop_index != -1:
+                        book_title = text_after_quote[:stop_index].strip()
+                        result["book_title"] = book_title
+                        result["remaining_text"] = text_after_quote[stop_index:].strip()
+                    else:
+                        # Fallback: take everything up to the first period
+                        period_index = text_after_quote.find(".")
+                        if period_index != -1:
+                            book_title = text_after_quote[:period_index].strip()
+                            result["book_title"] = book_title
+                            result["remaining_text"] = text_after_quote[
+                                period_index + 1 :
+                            ].strip()
+                        else:
+                            result["remaining_text"] = text_after_quote
+                # If we found a book_title but no book_authors, set book_authors
+                # to chapter_authors
+                if result["book_title"] and not result["book_authors"]:
+                    result["book_authors"] = result["chapter_authors"]
         else:
             # If no quoted chapter title found, treat as regular citation
             result["remaining_text"] = text_after_date
@@ -745,6 +880,152 @@ def type_2_parser(citation):
     return result
 
 
+def type_5_parser(citation):
+    """
+    Parse Type V citations that have editors in parentheses.
+    Extracts authors, year, editor, title, and ISBN from the citation.
+
+    Format: Authors (year). Editor (ed.). Title. Publisher. ISBN.
+
+    Args:
+        citation (str): A citation string that contains editor information
+
+    Returns:
+        dict: Parsed citation data with authors, year, editor, title, isbn, and
+        remaining_text fields
+    """
+    if not citation:
+        return {
+            "authors": None,
+            "year": None,
+            "editor": None,
+            "title": None,
+            "isbn": None,
+            "remaining_text": citation,
+        }
+
+    # Initialize result
+    result = {
+        "authors": None,
+        "year": None,
+        "editor": None,
+        "title": None,
+        "isbn": None,
+        "remaining_text": citation,
+    }
+
+    # Extract year/date from parentheses
+    date_pattern = r"\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)"
+    date_match = re.search(date_pattern, citation, re.IGNORECASE)
+
+    if date_match:
+        date_text = date_match.group(0)
+        date_start = date_match.start()
+        date_end = date_match.end()
+
+        # Extract authors from everything before the parentheses
+        authors = citation[:date_start].strip()
+        result["authors"] = authors
+
+        # Extract just the year (4 digits)
+        year_match = re.search(r"\d{4}", date_text)
+        if year_match:
+            result["year"] = year_match.group(0)
+
+        # Extract text after the date
+        text_after_date = citation[date_end:].strip()
+        if text_after_date.startswith("."):
+            text_after_date = text_after_date[1:].strip()
+
+        # Look for editor pattern: Name (ed.)
+        editor_pattern = r"([^\(]+)\s*\(ed\.\)"
+        editor_match = re.search(editor_pattern, text_after_date, re.IGNORECASE)
+
+        if editor_match:
+            editor = editor_match.group(1).strip()
+            result["editor"] = editor
+
+            # Get text after the editor
+            text_after_editor = text_after_date[editor_match.end() :].strip()
+
+            # Clean up leading punctuation
+            text_after_editor = re.sub(r"^[\.,\s]+", "", text_after_editor)
+
+            # Extract title (everything up to the next period or publisher keywords)
+            publisher_keywords = [
+                "press",
+                "publishing",
+                "publisher",
+                "university",
+                "blackwell",
+                "princeton",
+                "cambridge",
+                "oxford",
+                "harvard",
+                "yale",
+                "penguin",
+                "random house",
+                "simon & schuster",
+                "wiley",
+                "springer",
+                "elsevier",
+                "macmillan",
+                "routledge",
+                "academic press",
+                "london & new york",
+                "london",
+                "new york",
+                "facts on file",
+                "isbn",
+                "retrieved",
+                "archived",
+            ]
+
+            # Find the next period or publisher keyword
+            stop_patterns = [r"\."] + [
+                rf"\b{re.escape(kw)}\b" for kw in publisher_keywords
+            ]
+            stops = []
+
+            for pattern in stop_patterns:
+                matches = list(re.finditer(pattern, text_after_editor, re.IGNORECASE))
+                for match in matches:
+                    pos = match.start()
+                    # Count parentheses before this position
+                    open_parens = text_after_editor[:pos].count("(")
+                    close_parens = text_after_editor[:pos].count(")")
+                    # If we're inside parentheses, skip this stop
+                    if open_parens > close_parens:
+                        continue
+                    stops.append(pos)
+
+            if stops:
+                stop_index = min(stops)
+                title = text_after_editor[:stop_index].strip()
+                result["title"] = title
+                result["remaining_text"] = text_after_editor[stop_index:].strip()
+            else:
+                result["title"] = text_after_editor.strip()
+                result["remaining_text"] = ""
+        else:
+            # No editor found, treat as regular citation
+            result["remaining_text"] = text_after_date
+
+    # Extract ISBN
+    isbn_pattern = r"ISBN\s+([0-9\-]+)"
+    isbn_match = re.search(isbn_pattern, result["remaining_text"], re.IGNORECASE)
+
+    if isbn_match:
+        result["isbn"] = isbn_match.group(1)
+        # Remove the entire ISBN from the remaining text
+        isbn_full = isbn_match.group(0)
+        result["remaining_text"] = (
+            result["remaining_text"].replace(isbn_full, "").strip()
+        )
+
+    return result
+
+
 def type_4_parser(citation):
     """
     Parse Type IV citations that have quoted chapter titles without parenthetical
@@ -929,6 +1210,70 @@ def search_books():
         )
     except Exception as e:
         print(f"Error in search_books: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type1", methods=["POST"])
+def parse_type1():
+    """Parse Type I citations using the type_1_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+
+        result = type_1_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type1: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type2", methods=["POST"])
+def parse_type2():
+    """Parse Type II citations using the type_2_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+
+        result = type_2_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type2: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type3", methods=["POST"])
+def parse_type3():
+    """Parse Type III citations using the type_3_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+
+        result = type_3_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type3: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@app.route("/api/parse/type5", methods=["POST"])
+def parse_type5():
+    """Parse Type V citations using the type_5_parser function"""
+    try:
+        data = request.get_json()
+        citation = data.get("citation", "").strip()
+        if not citation:
+            return jsonify({"error": "Citation is required", "status": "error"}), 400
+
+        result = type_5_parser(citation)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error in parse_type5: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 

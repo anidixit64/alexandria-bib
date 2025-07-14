@@ -7,8 +7,157 @@ function SearchPage() {
   const [searchResults, setSearchResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showAllCitations, setShowAllCitations] = useState(false);
+
+  const [toggleStructured, setToggleStructured] = useState(false);
+  const [parsedCitations, setParsedCitations] = useState({});
   const navigate = useNavigate();
+
+  // Function to determine which parser to use based on citation format
+  const determineParser = (citation) => {
+    console.log('Determining parser for citation:', citation);
+
+    // Check for chapter citations (has quoted chapter titles)
+    if (
+      citation.includes('"') ||
+      (citation.includes("'") &&
+        citation.match(/['"][^'"]*['"]\s*(?:in|In|\.)/))
+    ) {
+      console.log('Selected type3 (quoted chapter title found)');
+      return 'type3'; // Chapter citations with quotes
+    }
+
+    // Check for editor citations (contains "(ed.)" or "(eds.)")
+    if (citation.includes('(ed.') || citation.includes('(eds.')) {
+      console.log('Selected type5 (editor found)');
+      return 'type5'; // Editor citations
+    }
+
+    // Check for parenthetical dates (Type 1) - look for year in parentheses
+    if (citation.match(/\([^)]*\d{4}[^)]*\)/)) {
+      console.log('Selected type1 (parenthetical year found)');
+      return 'type1';
+    }
+
+    // Check for standalone years (Type 2)
+    if (citation.match(/\b(19|20)\d{2}\b/) && !citation.includes('(')) {
+      console.log('Selected type2 (standalone year found)');
+      return 'type2';
+    }
+
+    // Default to Type 1 for unknown formats
+    console.log('Selected type1 (default)');
+    return 'type1';
+  };
+
+  // Function to parse citation using backend parsers
+  const parseCitation = async (citation) => {
+    const parserType = determineParser(citation);
+    console.log(`Using parser: ${parserType} for citation:`, citation);
+
+    try {
+      const response = await fetch(
+        `http://localhost:5001/api/parse/${parserType}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ citation }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`Parser ${parserType} result:`, result);
+        return result;
+      } else {
+        console.error(`Failed to parse citation with ${parserType} parser`);
+        return null;
+      }
+    } catch (err) {
+      console.error('Error parsing citation:', err);
+      return null;
+    }
+  };
+
+  // Function to render structured citation
+  const renderStructuredCitation = (citation, index) => {
+    const parsed = parsedCitations[index];
+
+    if (!parsed) {
+      return (
+        <div key={index} className="citation-item">
+          <div className="citation-number">{index + 1}</div>
+          <div className="citation-content">
+            <div className="citation-text">{citation}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Check if it's a chapter citation (has chapter_title)
+    if (parsed.chapter_title) {
+      return (
+        <div key={index} className="citation-item structured">
+          <div className="citation-number">{index + 1}</div>
+          <div className="citation-content">
+            <div className="book-title">
+              {parsed.book_title || 'Unknown Book'}
+            </div>
+            <div className="book-author">
+              <strong>Book Authors:</strong> {parsed.book_authors || 'Unknown'}
+            </div>
+            <div className="chapter-title">
+              <strong>Chapter:</strong> {parsed.chapter_title}
+            </div>
+            <div className="book-author">
+              <strong>Chapter Author:</strong>{' '}
+              {parsed.chapter_authors || 'Unknown'}
+            </div>
+            {parsed.year && <div className="year">{parsed.year}</div>}
+            {parsed.isbn && (
+              <div className="isbn">
+                <strong>ISBN:</strong> {parsed.isbn}
+              </div>
+            )}
+            {parsed.remaining_text && (
+              <div className="remaining-text">
+                <strong>Additional Info:</strong> {parsed.remaining_text}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div key={index} className="citation-item structured">
+          <div className="citation-number">{index + 1}</div>
+          <div className="citation-content">
+            <div className="book-title">{parsed.title || 'Unknown Title'}</div>
+            <div className="book-author">
+              <strong>Author:</strong> {parsed.authors || 'Unknown'}
+            </div>
+            {parsed.editor && (
+              <div className="book-author">
+                <strong>Editor:</strong> {parsed.editor}
+              </div>
+            )}
+            {parsed.year && <div className="year">{parsed.year}</div>}
+            {parsed.isbn && (
+              <div className="isbn">
+                <strong>ISBN:</strong> {parsed.isbn}
+              </div>
+            )}
+            {parsed.remaining_text && (
+              <div className="remaining-text">
+                <strong>Additional Info:</strong> {parsed.remaining_text}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -16,7 +165,8 @@ function SearchPage() {
       setIsLoading(true);
       setError(null);
       setSearchResults(null);
-      setShowAllCitations(false);
+      setParsedCitations({});
+      setToggleStructured(false); // Reset toggle to off for new searches
 
       try {
         const response = await fetch('http://localhost:5001/api/search', {
@@ -50,16 +200,30 @@ function SearchPage() {
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
-    setShowAllCitations(false);
+    setParsedCitations({});
   };
 
-  const toggleCitations = () => {
-    setShowAllCitations(!showAllCitations);
+  const handleToggleStructured = async () => {
+    const newToggleState = !toggleStructured;
+    setToggleStructured(newToggleState);
+
+    // If turning on structured view, parse ALL citations (not just displayed ones)
+    if (newToggleState && searchResults?.citations) {
+      const newParsedCitations = {};
+
+      // Parse all citations in the search results
+      for (let i = 0; i < searchResults.citations.length; i++) {
+        const parsed = await parseCitation(searchResults.citations[i]);
+        if (parsed) {
+          newParsedCitations[i] = parsed;
+        }
+      }
+
+      setParsedCitations(newParsedCitations);
+    }
   };
 
-  const displayedCitations =
-    searchResults?.citations?.slice(0, showAllCitations ? undefined : 5) || [];
-  const hasMoreCitations = searchResults?.citations?.length > 5;
+  const displayedCitations = searchResults?.citations || [];
 
   return (
     <div className="search-page">
@@ -96,39 +260,39 @@ function SearchPage() {
         {searchResults && (
           <div className="results-section">
             <div className="results-header">
-              <button className="close-button" onClick={closeResults}>
-                ×
-              </button>
+              <div className="header-controls">
+                <div className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    id="citation-toggle"
+                    className="toggle-input"
+                    checked={toggleStructured}
+                    onChange={handleToggleStructured}
+                  />
+                  <label htmlFor="citation-toggle" className="toggle-label">
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
+                <button className="close-button" onClick={closeResults}>
+                  ×
+                </button>
+              </div>
             </div>
 
             {searchResults.citations.length > 0 ? (
               <div className="citations-container">
-                {displayedCitations.map((citation, index) => (
-                  <div key={index} className="citation-item">
-                    <span className="citation-number">{index + 1}.</span>
-                    <span className="citation-text">{citation}</span>
-                  </div>
-                ))}
-
-                {hasMoreCitations && !showAllCitations && (
-                  <div className="citations-expand">
-                    <span className="ellipsis">...</span>
-                    <button className="expand-button" onClick={toggleCitations}>
-                      Show All {searchResults.citations.length} Citations
-                    </button>
-                  </div>
-                )}
-
-                {hasMoreCitations && showAllCitations && (
-                  <div className="citations-collapse">
-                    <button
-                      className="collapse-button"
-                      onClick={toggleCitations}
-                    >
-                      Show Less
-                    </button>
-                  </div>
-                )}
+                {toggleStructured
+                  ? displayedCitations.map((citation, index) =>
+                      renderStructuredCitation(citation, index)
+                    )
+                  : displayedCitations.map((citation, index) => (
+                      <div key={index} className="citation-item">
+                        <div className="citation-number">{index + 1}</div>
+                        <div className="citation-content">
+                          <div className="citation-text">{citation}</div>
+                        </div>
+                      </div>
+                    ))}
               </div>
             ) : (
               <div className="no-results">

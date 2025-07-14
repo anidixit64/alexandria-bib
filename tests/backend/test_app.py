@@ -1,10 +1,5 @@
 import unittest
 import json
-import sys
-import os
-
-# Add the current directory to the path so we can import app
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import app
 from app import clean_citation
@@ -291,6 +286,47 @@ class TestType1Parser(unittest.TestCase):
         self.assertEqual(result["title"], "Ruling Chiefs of Hawaii (Revised ed.)")
         self.assertEqual(result["isbn"], "0-87336-014-1")
 
+    def test_underhill_dangerous_creatures_citation(self):
+        """Test parsing Underhill citation with edition in title"""
+        test_citation = "Underhill, David (1993). Australia's dangerous creatures (4th rev. ed.). Sydney: Reader's Digest Services. ISBN 978-0864380180"
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Underhill, David")
+        self.assertEqual(result["year"], "1993")
+        self.assertEqual(
+            result["title"], "Australia's dangerous creatures (4th rev. ed.)"
+        )
+        self.assertEqual(result["isbn"], "978-0864380180")
+
+    def test_bunting_ulysses_grant_citation(self):
+        """Test parsing Bunting citation with name containing initials in title"""
+        test_citation = "Bunting, Josiah (2004). Ulysses S. Grant. New York: Time Books. ISBN 978-0-8050-6949-5"
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Bunting, Josiah")
+        self.assertEqual(result["year"], "2004")
+        self.assertEqual(result["title"], "Ulysses S. Grant")
+        self.assertEqual(result["isbn"], "978-0-8050-6949-5")
+
+    def test_bonekemper_grant_lee_citation(self):
+        """Test parsing Bonekemper citation with page number in citation"""
+        test_citation = "Bonekemper, Edward (2014). Grant and Lee. Washington, D.C.: Regnery Publishing. p. xiv. ISBN 978-1-62157-302-9"
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Bonekemper, Edward")
+        self.assertEqual(result["year"], "2014")
+        self.assertEqual(result["title"], "Grant and Lee")
+        self.assertEqual(result["isbn"], "978-1-62157-302-9")
+
+    def test_bevins_jakarta_method_citation(self):
+        """Test parsing Bevins citation (standard book)"""
+        test_citation = "Bevins, Vincent (2020). The Jakarta Method: Washington's Anticommunist Crusade and the Mass Murder Program that Shaped Our World. PublicAffairs. ISBN 978-1541742406"
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Bevins, Vincent")
+        self.assertEqual(result["year"], "2020")
+        self.assertEqual(
+            result["title"],
+            "The Jakarta Method: Washington's Anticommunist Crusade and the Mass Murder Program that Shaped Our World",
+        )
+        self.assertEqual(result["isbn"], "978-1541742406")
+
 
 class TestType3Parser(unittest.TestCase):
     """Test the type_3_parser function for citations with quoted chapter titles"""
@@ -321,7 +357,9 @@ class TestType3Parser(unittest.TestCase):
         self.assertNotIn("Mead, J. G.; Brownell, R. L. Jr.", result["remaining_text"])
         self.assertNotIn("Order Cetacea", result["remaining_text"])
         self.assertNotIn("Wilson, D. E.; Reeder, D. M.", result["remaining_text"])
-        self.assertNotIn("Mammal Species of the World", result["remaining_text"])
+        self.assertNotIn(
+            "Mammal Species of the World", result["remaining_text"]
+        )
         self.assertNotIn("(2005)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
 
@@ -385,6 +423,19 @@ class TestType3Parser(unittest.TestCase):
             "Civil Resistance and Power Politics: The Experience of Non-violent Action from Gandhi to the Present",
         )
         self.assertEqual(result["isbn"], "978-0-19-955201-6")
+
+    def test_mcclintock_state_terror_chapter(self):
+        """Test parsing McClintock chapter citation with quoted title"""
+        test_citation = 'McClintock, Michael (1985). "State Terror and Popular Resistance in Guatemala". The American Connection. Vol. 2. London, UK: Zed. ISBN 9780862322595'
+        result = self.parser(test_citation)
+        self.assertEqual(result["chapter_authors"], "McClintock, Michael")
+        self.assertEqual(result["year"], "1985")
+        self.assertEqual(
+            result["chapter_title"], "State Terror and Popular Resistance in Guatemala"
+        )
+        self.assertEqual(result["book_title"], "The American Connection. Vol. 2")
+        self.assertEqual(result["book_authors"], "McClintock, Michael")
+        self.assertEqual(result["isbn"], "9780862322595")
 
 
 class TestType2Parser(unittest.TestCase):
