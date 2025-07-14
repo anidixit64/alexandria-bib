@@ -14,33 +14,41 @@ function SearchPage() {
 
   // Function to determine which parser to use based on citation format
   const determineParser = (citation) => {
-    // Check for chapter citations (has quotes)
-    if (citation.includes('"') || citation.includes("'")) {
+    console.log('Determining parser for citation:', citation);
+    
+    // Check for chapter citations (has quoted chapter titles)
+    if (citation.includes('"') || (citation.includes("'") && citation.match(/['"][^'"]*['"]\s*(?:in|In|\.)/))) {
+      console.log('Selected type3 (quoted chapter title found)');
       return 'type3'; // Chapter citations with quotes
     }
     
     // Check for editor citations (contains "(ed.)" or "(eds.)")
     if (citation.includes('(ed.') || citation.includes('(eds.')) {
+      console.log('Selected type5 (editor found)');
       return 'type5'; // Editor citations
     }
     
-    // Check for parenthetical dates (Type 1)
-    if (citation.includes('(') && citation.match(/\([^)]*\d{4}[^)]*\)/)) {
+    // Check for parenthetical dates (Type 1) - look for year in parentheses
+    if (citation.match(/\([^)]*\d{4}[^)]*\)/)) {
+      console.log('Selected type1 (parenthetical year found)');
       return 'type1';
     }
     
     // Check for standalone years (Type 2)
     if (citation.match(/\b(19|20)\d{2}\b/) && !citation.includes('(')) {
+      console.log('Selected type2 (standalone year found)');
       return 'type2';
     }
     
     // Default to Type 1 for unknown formats
+    console.log('Selected type1 (default)');
     return 'type1';
   };
 
   // Function to parse citation using backend parsers
   const parseCitation = async (citation) => {
     const parserType = determineParser(citation);
+    console.log(`Using parser: ${parserType} for citation:`, citation);
     
     try {
       const response = await fetch(`http://localhost:5001/api/parse/${parserType}`, {
@@ -53,6 +61,7 @@ function SearchPage() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log(`Parser ${parserType} result:`, result);
         return result;
       } else {
         console.error(`Failed to parse citation with ${parserType} parser`);
