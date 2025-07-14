@@ -288,12 +288,14 @@ function SearchPage() {
 
   return (
     <div className="search-page">
+      <div className="top-left-logo">
+        <img src={scrollLogo} alt="Alexandria Logo" className="site-logo-small" />
+      </div>
       <header className="search-header">
         <button className="back-button" onClick={handleBackToHome}>
           ← Back to Alexandria
         </button>
         <div className="header-title-section">
-          <img src={scrollLogo} alt="Alexandria Logo" className="header-logo" />
           <h1 className="search-title">Explore the Library</h1>
         </div>
       </header>

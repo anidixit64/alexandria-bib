@@ -10,30 +10,33 @@
   overflow: hidden;
 }
 
+.top-left-logo {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  z-index: 10;
+  animation: fadeIn 1s ease-in;
+}
+
+.site-logo-small {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+  transition: all 0.3s ease;
+}
+
+.site-logo-small:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(3px 3px 6px rgba(0, 0, 0, 0.6));
+}
+
 .App-header {
   font-size: 4rem;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   animation: fadeIn 1.5s ease-in;
   margin-bottom: 2rem;
-}
-
-.logo-container {
-  margin-bottom: 2rem;
-  animation: fadeIn 1s ease-in;
-}
-
-.site-logo {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
-  transition: all 0.3s ease;
-}
-
-.site-logo:hover {
-  transform: scale(1.05);
-  filter: drop-shadow(3px 3px 6px rgba(0, 0, 0, 0.6));
 }
 
 .curved-text {

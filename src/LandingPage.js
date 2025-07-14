@@ -30,10 +30,10 @@ function LandingPage() {
 
   return (
     <div className="App" style={appStyle}>
+      <div className="top-left-logo">
+        <img src={scrollLogo} alt="Alexandria Logo" className="site-logo-small" />
+      </div>
       <header className="App-header">
-        <div className="logo-container">
-          <img src={scrollLogo} alt="Alexandria Logo" className="site-logo" />
-        </div>
         <div className="curved-text">
           {title.split('').map((letter, index) => (
             <span key={index} className={`letter-${index}`}>
