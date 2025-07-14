@@ -3,30 +3,30 @@ import scrollLogo from './scroll_logo.png';
 import './LoadingScreen.css';
 
 function LoadingScreen({ onLoadingComplete }) {
-  const [isVisible, setIsVisible] = useState(true);
+  const [phase, setPhase] = useState('loading'); // 'loading', 'transitioning', 'complete'
 
   useEffect(() => {
-    // Show loading screen for 3 seconds
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      // Wait for fade out animation to complete before calling onLoadingComplete
-      setTimeout(() => {
+    // Phase 1: Show loading screen for 2 seconds
+    const loadingTimer = setTimeout(() => {
+      setPhase('transitioning');
+      
+      // Phase 2: After transition animation completes, trigger landing page
+      const transitionTimer = setTimeout(() => {
+        setPhase('complete');
         onLoadingComplete();
-      }, 500); // 500ms for fade out animation
-    }, 3000);
+      }, 1000); // 1 second for the transition animation
+      
+      return () => clearTimeout(transitionTimer);
+    }, 2000);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(loadingTimer);
   }, [onLoadingComplete]);
 
-  if (!isVisible) {
-    return null;
-  }
-
   return (
-    <div className="loading-screen">
-      <div className="loading-content">
-        <img src={scrollLogo} alt="Alexandria Logo" className="loading-logo" />
-        <div className="loading-text">Alexandria</div>
+    <div className={`loading-screen ${phase}`}>
+      <div className={`loading-content ${phase}`}>
+        <img src={scrollLogo} alt="Alexandria Logo" className={`loading-logo ${phase}`} />
+        <div className={`loading-text ${phase}`}>Alexandria</div>
       </div>
     </div>
   );

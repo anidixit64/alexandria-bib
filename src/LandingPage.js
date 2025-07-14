@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
 import libraryImage from './library.jpg';
@@ -7,6 +7,16 @@ import scrollLogo from './scroll_logo.png';
 
 function LandingPage() {
   const navigate = useNavigate();
+  const [showContent, setShowContent] = useState(false);
+
+  useEffect(() => {
+    // Show content after a brief delay to allow loading screen transition
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 500); // 500ms delay to sync with loading screen transition
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleExploreLibrary = () => {
     console.log('Explore the Library button clicked');
@@ -33,16 +43,16 @@ function LandingPage() {
       <div className="top-left-logo">
         <img src={scrollLogo} alt="Alexandria Logo" className="site-logo-small" />
       </div>
-      <header className="App-header">
+      <header className={`App-header ${showContent ? 'show' : ''}`}>
         <div className="curved-text">
           {title.split('').map((letter, index) => (
-            <span key={index} className={`letter-${index}`}>
+            <span key={index} className={`letter-${index} ${showContent ? 'show' : ''}`}>
               {letter}
             </span>
           ))}
         </div>
         <button
-          className="explore-library-btn"
+          className={`explore-library-btn ${showContent ? 'show' : ''}`}
           style={buttonStyle}
           onClick={handleExploreLibrary}
         >

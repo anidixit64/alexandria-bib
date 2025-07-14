@@ -4,12 +4,12 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(rgba(87, 171, 223, 0.9), rgba(87, 171, 223, 0.9));
+  background: linear-gradient(rgba(87, 171, 223, 0.8), rgba(87, 171, 223, 0.8));
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: fadeIn 0.5s ease-in;
+  transition: all 1s ease-in-out;
 }
 
 .loading-content {
@@ -17,7 +17,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2rem;
-  animation: fadeIn 1s ease-in 0.3s both;
+  transition: all 1s ease-in-out;
 }
 
 .loading-logo {
@@ -25,6 +25,7 @@
   height: 150px;
   object-fit: contain;
   filter: drop-shadow(3px 3px 6px rgba(0, 0, 0, 0.5));
+  transition: all 1s ease-in-out;
   animation: logoPulse 2s ease-in-out infinite;
 }
 
@@ -34,7 +35,54 @@
   font-weight: bold;
   color: #ffd500;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  transition: all 1s ease-in-out;
   animation: textGlow 2s ease-in-out infinite;
+}
+
+/* Phase 1: Loading - logo centered with animations */
+.loading-screen.loading .loading-content {
+  transform: translate(0, 0);
+}
+
+.loading-screen.loading .loading-logo {
+  transform: scale(1);
+}
+
+.loading-screen.loading .loading-text {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Phase 2: Transitioning - logo shrinks and moves to top left */
+.loading-screen.transitioning {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 2rem;
+}
+
+.loading-screen.transitioning .loading-content {
+  flex-direction: row;
+  gap: 1rem;
+  transform: translate(0, 0);
+}
+
+.loading-screen.transitioning .loading-logo {
+  width: 80px;
+  height: 80px;
+  animation: none;
+  transform: scale(1);
+}
+
+.loading-screen.transitioning .loading-text {
+  opacity: 0;
+  transform: scale(0.8);
+  font-size: 0;
+}
+
+/* Phase 3: Complete - fade out */
+.loading-screen.complete {
+  opacity: 0;
+  pointer-events: none;
 }
 
 @keyframes fadeIn {
@@ -63,19 +111,5 @@
   }
   50% {
     text-shadow: 2px 2px 8px rgba(255, 213, 0, 0.8);
-  }
-}
-
-/* Fade out animation when loading is complete */
-.loading-screen.fade-out {
-  animation: fadeOut 0.5s ease-out forwards;
-}
-
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
   }
 } 
