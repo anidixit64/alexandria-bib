@@ -419,9 +419,10 @@ def type_1_parser(citation):
                     r"Publishers|Inc|Ltd|Co|Corp|Society|Bank|Affairs)",
                     # Working paper or report patterns
                     r"^\s*[A-Z][a-zA-Z\s]+(?:Working Paper|Report|Study|Series)",
-                    # Simple publisher names (like "Dover", "Twenty-First Century Books")
-                    r"^\s*[A-Z][a-zA-Z\s\-]+(?:Books|Press|Publishing|Publisher|University|"
-                    r"College|Institute|Society|Company|Corporation|Inc|Ltd|Co|Corp)",
+                    # Simple publisher names (like "Dover", "Twenty-First Century")
+                    r"^\s*[A-Z][a-zA-Z\s\-]+(?:Books|Press|Publishing|Publisher|"
+                    r"University|College|Institute|Society|Company|Corporation|"
+                    r"Inc|Ltd|Co|Corp)",
                     # Specific known publishers (fallback)
                     r"^\s*(?:press|publishing|publisher|university|blackwell|"
                     r"princeton|cambridge|oxford|harvard|yale|penguin|random house|"
