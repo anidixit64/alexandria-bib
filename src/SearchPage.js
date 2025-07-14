@@ -15,31 +15,35 @@ function SearchPage() {
   // Function to determine which parser to use based on citation format
   const determineParser = (citation) => {
     console.log('Determining parser for citation:', citation);
-    
+
     // Check for chapter citations (has quoted chapter titles)
-    if (citation.includes('"') || (citation.includes("'") && citation.match(/['"][^'"]*['"]\s*(?:in|In|\.)/))) {
+    if (
+      citation.includes('"') ||
+      (citation.includes("'") &&
+        citation.match(/['"][^'"]*['"]\s*(?:in|In|\.)/))
+    ) {
       console.log('Selected type3 (quoted chapter title found)');
       return 'type3'; // Chapter citations with quotes
     }
-    
+
     // Check for editor citations (contains "(ed.)" or "(eds.)")
     if (citation.includes('(ed.') || citation.includes('(eds.')) {
       console.log('Selected type5 (editor found)');
       return 'type5'; // Editor citations
     }
-    
+
     // Check for parenthetical dates (Type 1) - look for year in parentheses
     if (citation.match(/\([^)]*\d{4}[^)]*\)/)) {
       console.log('Selected type1 (parenthetical year found)');
       return 'type1';
     }
-    
+
     // Check for standalone years (Type 2)
     if (citation.match(/\b(19|20)\d{2}\b/) && !citation.includes('(')) {
       console.log('Selected type2 (standalone year found)');
       return 'type2';
     }
-    
+
     // Default to Type 1 for unknown formats
     console.log('Selected type1 (default)');
     return 'type1';
@@ -49,15 +53,18 @@ function SearchPage() {
   const parseCitation = async (citation) => {
     const parserType = determineParser(citation);
     console.log(`Using parser: ${parserType} for citation:`, citation);
-    
+
     try {
-      const response = await fetch(`http://localhost:5001/api/parse/${parserType}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ citation }),
-      });
+      const response = await fetch(
+        `http://localhost:5001/api/parse/${parserType}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ citation }),
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();
@@ -76,7 +83,7 @@ function SearchPage() {
   // Function to render structured citation
   const renderStructuredCitation = (citation, index) => {
     const parsed = parsedCitations[index];
-    
+
     if (!parsed) {
       return (
         <div key={index} className="citation-item">
@@ -94,7 +101,9 @@ function SearchPage() {
         <div key={index} className="citation-item structured">
           <div className="citation-number">{index + 1}</div>
           <div className="citation-content">
-            <div className="book-title">{parsed.book_title || 'Unknown Book'}</div>
+            <div className="book-title">
+              {parsed.book_title || 'Unknown Book'}
+            </div>
             <div className="book-author">
               <strong>Book Authors:</strong> {parsed.book_authors || 'Unknown'}
             </div>
@@ -102,7 +111,8 @@ function SearchPage() {
               <strong>Chapter:</strong> {parsed.chapter_title}
             </div>
             <div className="book-author">
-              <strong>Chapter Author:</strong> {parsed.chapter_authors || 'Unknown'}
+              <strong>Chapter Author:</strong>{' '}
+              {parsed.chapter_authors || 'Unknown'}
             </div>
             {parsed.year && <div className="year">{parsed.year}</div>}
             {parsed.isbn && (
@@ -193,16 +203,14 @@ function SearchPage() {
     setParsedCitations({});
   };
 
-
-
   const handleToggleStructured = async () => {
     const newToggleState = !toggleStructured;
     setToggleStructured(newToggleState);
-    
+
     // If turning on structured view, parse ALL citations (not just displayed ones)
     if (newToggleState && searchResults?.citations) {
       const newParsedCitations = {};
-      
+
       // Parse all citations in the search results
       for (let i = 0; i < searchResults.citations.length; i++) {
         const parsed = await parseCitation(searchResults.citations[i]);
@@ -210,7 +218,7 @@ function SearchPage() {
           newParsedCitations[i] = parsed;
         }
       }
-      
+
       setParsedCitations(newParsedCitations);
     }
   };
@@ -265,29 +273,26 @@ function SearchPage() {
                     <span className="toggle-slider"></span>
                   </label>
                 </div>
-              <button className="close-button" onClick={closeResults}>
-                ×
-              </button>
+                <button className="close-button" onClick={closeResults}>
+                  ×
+                </button>
               </div>
             </div>
 
             {searchResults.citations.length > 0 ? (
               <div className="citations-container">
-                {toggleStructured 
-                  ? displayedCitations.map((citation, index) => 
+                {toggleStructured
+                  ? displayedCitations.map((citation, index) =>
                       renderStructuredCitation(citation, index)
                     )
                   : displayedCitations.map((citation, index) => (
-                  <div key={index} className="citation-item">
+                      <div key={index} className="citation-item">
                         <div className="citation-number">{index + 1}</div>
                         <div className="citation-content">
                           <div className="citation-text">{citation}</div>
-                  </div>
-                  </div>
-                    ))
-                }
-
-
+                        </div>
+                      </div>
+                    ))}
               </div>
             ) : (
               <div className="no-results">
