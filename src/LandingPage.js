@@ -1,66 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './App.css';
-import libraryImage from './library.jpg';
-import parchmentImage from './parchment.jpg';
+import './LandingPage.css';
 import scrollLogo from './scroll_logo.png';
 
-function LandingPage() {
+const LandingPage = () => {
   const navigate = useNavigate();
-  const [showContent, setShowContent] = useState(false);
+  const [animationState, setAnimationState] = useState('loading'); // loading, transitioning, complete
 
   useEffect(() => {
-    // Show content after a brief delay to allow loading screen transition
-    const timer = setTimeout(() => {
-      setShowContent(true);
-    }, 500); // 500ms delay to sync with loading screen transition
+    // Start with large centered logo
+    setAnimationState('loading');
+    
+    // After 2 seconds, start transition to corner
+    const transitionTimer = setTimeout(() => {
+      setAnimationState('transitioning');
+    }, 2000);
 
-    return () => clearTimeout(timer);
+    // After transition completes, show text and button
+    const completeTimer = setTimeout(() => {
+      setAnimationState('complete');
+    }, 3000);
+
+    return () => {
+      clearTimeout(transitionTimer);
+      clearTimeout(completeTimer);
+    };
   }, []);
 
-  const handleExploreLibrary = () => {
-    console.log('Explore the Library button clicked');
+  const handleExploreClick = () => {
     navigate('/search');
   };
 
-  const appStyle = {
-    background: `linear-gradient(rgba(87, 171, 223, 0.8), rgba(87, 171, 223, 0.8)), url(${libraryImage})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-  };
-
-  const buttonStyle = {
-    background: `linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url(${parchmentImage})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-  };
-
-  const title = 'Alexandria'; // 10 letters: A-l-e-x-a-n-d-r-i-a
-
   return (
-    <div className="App" style={appStyle}>
-      <div className="top-left-logo">
-        <img src={scrollLogo} alt="Alexandria Logo" className="site-logo-small" />
+    <div className="landing-page">
+      <div className={`logo-container ${animationState}`}>
+        <img 
+          src={scrollLogo} 
+          alt="Alexandria Logo" 
+          className="logo"
+        />
       </div>
-      <header className={`App-header ${showContent ? 'show' : ''}`}>
-        <div className="curved-text">
-          {title.split('').map((letter, index) => (
-            <span key={index} className={`letter-${index} ${showContent ? 'show' : ''}`}>
-              {letter}
-            </span>
-          ))}
-        </div>
-        <button
-          className={`explore-library-btn ${showContent ? 'show' : ''}`}
-          style={buttonStyle}
-          onClick={handleExploreLibrary}
-        >
+      
+      <div className={`content ${animationState}`}>
+        <h1 className="title">
+          <span className="letter">A</span>
+          <span className="letter">l</span>
+          <span className="letter">e</span>
+          <span className="letter">x</span>
+          <span className="letter">a</span>
+          <span className="letter">n</span>
+          <span className="letter">d</span>
+          <span className="letter">r</span>
+          <span className="letter">i</span>
+          <span className="letter">a</span>
+        </h1>
+        <button className="explore-button" onClick={handleExploreClick}>
           Explore the Library
         </button>
-      </header>
+      </div>
     </div>
   );
-}
+};
 
 export default LandingPage;

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import './SearchPage.css';
-import scrollLogo from './scroll_logo.png';
 
 function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -288,9 +287,6 @@ function SearchPage() {
 
   return (
     <div className="search-page">
-      <div className="top-left-logo">
-        <img src={scrollLogo} alt="Alexandria Logo" className="site-logo-small" />
-      </div>
       <header className="search-header">
         <button className="back-button" onClick={handleBackToHome}>
           ← Back to Alexandria
