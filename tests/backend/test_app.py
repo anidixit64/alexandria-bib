@@ -297,7 +297,9 @@ class TestType1Parser(unittest.TestCase):
         result = self.parser(test_citation)
         self.assertEqual(result["authors"], "Underhill, David")
         self.assertEqual(result["year"], "1993")
-        self.assertEqual(result["title"], "Australia's dangerous creatures (4th rev. ed.)")
+        self.assertEqual(
+            result["title"], "Australia's dangerous creatures (4th rev. ed.)"
+        )
         self.assertEqual(result["isbn"], "978-0864380180")
 
     def test_bunting_ulysses_grant_citation(self):
@@ -324,7 +326,10 @@ class TestType1Parser(unittest.TestCase):
         result = self.parser(test_citation)
         self.assertEqual(result["authors"], "Bevins, Vincent")
         self.assertEqual(result["year"], "2020")
-        self.assertEqual(result["title"], "The Jakarta Method: Washington's Anticommunist Crusade and the Mass Murder Program that Shaped Our World")
+        self.assertEqual(
+            result["title"],
+            "The Jakarta Method: Washington's Anticommunist Crusade and the Mass Murder Program that Shaped Our World",
+        )
         self.assertEqual(result["isbn"], "978-1541742406")
 
 
@@ -428,7 +433,9 @@ class TestType3Parser(unittest.TestCase):
         result = self.parser(test_citation)
         self.assertEqual(result["chapter_authors"], "McClintock, Michael")
         self.assertEqual(result["year"], "1985")
-        self.assertEqual(result["chapter_title"], "State Terror and Popular Resistance in Guatemala")
+        self.assertEqual(
+            result["chapter_title"], "State Terror and Popular Resistance in Guatemala"
+        )
         self.assertEqual(result["book_title"], "The American Connection. Vol. 2")
         self.assertEqual(result["book_authors"], "McClintock, Michael")
         self.assertEqual(result["isbn"], "9780862322595")

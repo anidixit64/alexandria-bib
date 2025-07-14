@@ -382,7 +382,8 @@ def type_1_parser(citation):
         ]
         stops = []
 
-        # Check for periods, but be smarter about periods in names and publisher detection
+        # Check for periods, but be smarter about periods in names and
+        # publisher detection
         period_matches = list(re.finditer(r"\.", text_after_date))
         for match in period_matches:
             pos = match.start()
@@ -400,14 +401,20 @@ def type_1_parser(citation):
 
                 # Look for publisher patterns (more robust than hardcoded keywords)
                 publisher_patterns = [
-                    # Location: Publisher pattern (e.g., "New York: Random House", "Bethesda, MD: American Fisheries Society")
+                    # Location: Publisher pattern (e.g., "New York: Random House",
+                    # "Bethesda, MD: American Fisheries Society")
                     r"^\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2})?\s*:\s*[A-Z]",
                     # Publisher ending with common words
-                    r"^\s*[A-Z][a-zA-Z\s&]+(?:Press|Publishing|University|Books|Publishers|Inc|Ltd|Co|Corp|Society|Bank|Affairs)",
+                    r"^\s*[A-Z][a-zA-Z\s&]+(?:Press|Publishing|University|Books|"
+                    r"Publishers|Inc|Ltd|Co|Corp|Society|Bank|Affairs)",
                     # Working paper or report patterns
                     r"^\s*[A-Z][a-zA-Z\s]+(?:Working Paper|Report|Study|Series)",
                     # Specific known publishers (fallback)
-                    r"^\s*(?:press|publishing|publisher|university|blackwell|princeton|cambridge|oxford|harvard|yale|penguin|random house|simon & schuster|wiley|springer|elsevier|macmillan|routledge|academic press|london & new york|london|new york|washington|regnery|world bank|fisheries society|publicaffairs)",
+                    r"^\s*(?:press|publishing|publisher|university|blackwell|"
+                    r"princeton|cambridge|oxford|harvard|yale|penguin|random house|"
+                    r"simon & schuster|wiley|springer|elsevier|macmillan|routledge|"
+                    r"academic press|london & new york|london|new york|washington|"
+                    r"regnery|world bank|fisheries society|publicaffairs)",
                 ]
 
                 is_publisher = False
@@ -667,7 +674,8 @@ def type_3_parser(citation):
                             ].strip()
                         else:
                             result["remaining_text"] = text_after_quote
-                # If we found a book_title but no book_authors, set book_authors to chapter_authors
+                # If we found a book_title but no book_authors, set book_authors
+                # to chapter_authors
                 if result["book_title"] and not result["book_authors"]:
                     result["book_authors"] = result["chapter_authors"]
         else:
