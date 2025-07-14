@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 import './SearchPage.css';
 
 function SearchPage() {
@@ -10,6 +11,16 @@ function SearchPage() {
 
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
+  const sortOptions = [
+    { value: 'Title A - Z', label: 'Title A - Z' },
+    { value: 'Title Z - A', label: 'Title Z - A' },
+    { value: 'Author A - Z', label: 'Author A - Z' },
+    { value: 'Author Z - A', label: 'Author Z - A' },
+    { value: 'Year Increasing', label: 'Year Increasing' },
+    { value: 'Year Decreasing', label: 'Year Decreasing' },
+  ];
+
+  const [sortDropdown, setSortDropdown] = useState(sortOptions[0]);
   const navigate = useNavigate();
 
   // Function to determine which parser to use based on citation format
@@ -223,6 +234,11 @@ function SearchPage() {
     }
   };
 
+  const handleSortChange = (selectedOption) => {
+    setSortDropdown(selectedOption);
+    // For now, this doesn't do anything as requested
+  };
+
   const displayedCitations = searchResults?.citations || [];
 
   return (
@@ -261,6 +277,72 @@ function SearchPage() {
           <div className="results-section">
             <div className="results-header">
               <div className="header-controls">
+                <div className="sort-dropdown-wrapper">
+                  <Select
+                    classNamePrefix="sort-dropdown"
+                    value={sortDropdown}
+                    onChange={handleSortChange}
+                    options={sortOptions}
+                    isSearchable={false}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        background: 'rgba(255,255,255,0.95)',
+                        borderColor: state.isFocused ? 'rgba(255,213,0,0.6)' : 'rgba(44,24,16,0.3)',
+                        boxShadow: state.isFocused ? '0 0 0 3px rgba(255,213,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
+                        borderRadius: 8,
+                        minWidth: 140,
+                        height: 30,
+                        minHeight: 30,
+                        padding: '0 8px',
+                        fontFamily: 'Almendra, serif',
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: '#2c1810',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'rgba(44,24,16,0.5)',
+                          background: 'rgba(255,255,255,1)',
+                        },
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        background: 'rgba(255,255,255,0.98)',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                        fontFamily: 'Almendra, serif',
+                        color: '#2c1810',
+                        marginTop: 2,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        background: state.isSelected
+                          ? 'rgba(255,213,0,0.2)'
+                          : state.isFocused
+                          ? 'rgba(255,213,0,0.1)'
+                          : 'rgba(255,255,255,0.98)',
+                        color: '#2c1810',
+                        fontFamily: 'Almendra, serif',
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        padding: '10px 16px',
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: '#2c1810',
+                        fontFamily: 'Almendra, serif',
+                        fontWeight: 500,
+                      }),
+                      dropdownIndicator: (base) => ({
+                        ...base,
+                        color: '#2c1810',
+                        '&:hover': { color: '#2c1810' },
+                      }),
+                      indicatorSeparator: () => ({ display: 'none' }),
+                    }}
+                  />
+                </div>
                 <div className="toggle-switch">
                   <input
                     type="checkbox"

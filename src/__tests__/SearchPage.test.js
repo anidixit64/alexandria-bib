@@ -141,4 +141,65 @@ describe('SearchPage Component', () => {
       ).toBeInTheDocument();
     });
   });
+
+  test('displays sort dropdown when search results are shown', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        query: 'test query',
+        page_title: 'Test Page',
+        citations: ['Test citation 1', 'Test citation 2'],
+        count: 2,
+        status: 'success',
+      }),
+    });
+
+    render(<SearchPage />);
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(searchInput, { target: { value: 'test query' } });
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Title A - Z')).toBeInTheDocument();
+    });
+  });
+
+  test('sort dropdown has all required options', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        query: 'test query',
+        page_title: 'Test Page',
+        citations: ['Test citation 1', 'Test citation 2'],
+        count: 2,
+        status: 'success',
+      }),
+    });
+
+    render(<SearchPage />);
+    const searchInput = screen.getByPlaceholderText(
+      'Search for books, authors, or topics...'
+    );
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    fireEvent.change(searchInput, { target: { value: 'test query' } });
+    fireEvent.click(searchButton);
+
+    await waitFor(() => {
+      const dropdown = screen.getByDisplayValue('Title A - Z');
+      expect(dropdown).toBeInTheDocument();
+      
+      // Check that all options are present
+      expect(screen.getByText('Title A - Z')).toBeInTheDocument();
+      expect(screen.getByText('Title Z - A')).toBeInTheDocument();
+      expect(screen.getByText('Author A - Z')).toBeInTheDocument();
+      expect(screen.getByText('Author Z - A')).toBeInTheDocument();
+      expect(screen.getByText('Year Increasing')).toBeInTheDocument();
+      expect(screen.getByText('Year Decreasing')).toBeInTheDocument();
+    });
+  });
 });

@@ -314,13 +314,18 @@ def type_1_parser(citation):
         if year_match:
             result["year"] = year_match.group(0)
 
-        # Extract title from after the parentheses to the next period, comma,
-        # or before publisher/ISBN
+        # Remove any bracketed phrase immediately after the year
         text_after_date = citation[date_end:].strip()
+        # Remove leading period or comma
         if text_after_date.startswith("."):
             text_after_date = text_after_date[1:].strip()
         if text_after_date.startswith(","):
             text_after_date = text_after_date[1:].strip()
+        # Remove bracketed phrase after year
+        bracket_phrase_pattern = r"^\[.*?\]\.?\s*"
+        bracket_phrase_match = re.match(bracket_phrase_pattern, text_after_date)
+        if bracket_phrase_match:
+            text_after_date = text_after_date[bracket_phrase_match.end():].strip()
         # Skip over additional years in brackets like [1961]
         bracket_year_pattern = r"^\s*\[\d{4}\]\s*\.?\s*"
         bracket_match = re.match(bracket_year_pattern, text_after_date)
@@ -356,6 +361,11 @@ def type_1_parser(citation):
             "isbn",
             "retrieved",
             "archived",
+            "motilal banarsidass",
+            "archana verma",
+            "foreign languages press",
+            "twenty-first century books",
+            "dover",
         ]
         # Find comma followed by publisher-like word or ISBN/retrieved/archived
         comma_pat = re.compile(
@@ -409,12 +419,17 @@ def type_1_parser(citation):
                     r"Publishers|Inc|Ltd|Co|Corp|Society|Bank|Affairs)",
                     # Working paper or report patterns
                     r"^\s*[A-Z][a-zA-Z\s]+(?:Working Paper|Report|Study|Series)",
+                    # Simple publisher names (like "Dover", "Twenty-First Century Books")
+                    r"^\s*[A-Z][a-zA-Z\s\-]+(?:Books|Press|Publishing|Publisher|University|"
+                    r"College|Institute|Society|Company|Corporation|Inc|Ltd|Co|Corp)",
                     # Specific known publishers (fallback)
                     r"^\s*(?:press|publishing|publisher|university|blackwell|"
                     r"princeton|cambridge|oxford|harvard|yale|penguin|random house|"
                     r"simon & schuster|wiley|springer|elsevier|macmillan|routledge|"
                     r"academic press|london & new york|london|new york|washington|"
-                    r"regnery|world bank|fisheries society|publicaffairs)",
+                    r"regnery|world bank|fisheries society|publicaffairs|dover|"
+                    r"twenty-first century books|motilal banarsidass|archana verma|"
+                    r"foreign languages press)",
                 ]
 
                 is_publisher = False
@@ -462,6 +477,8 @@ def type_1_parser(citation):
             title = text_after_date.strip()
         # Remove (PDF) from title
         title = re.sub(r"\s*\(PDF\)\s*", "", title, flags=re.IGNORECASE)
+        # Remove bracketed content from title
+        title = re.sub(r"\s*\[.*?\]", "", title).strip()
         # Remove trailing period
         title = re.sub(r"\.+$", "", title).strip()
         result["title"] = title
