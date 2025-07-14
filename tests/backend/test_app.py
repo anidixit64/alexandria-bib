@@ -3,8 +3,8 @@ import json
 import sys
 import os
 
-# Add the current directory to the path so we can import app
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the project root directory to the path so we can import app
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app
 from app import clean_citation
@@ -362,7 +362,9 @@ class TestType3Parser(unittest.TestCase):
         self.assertNotIn("Mead, J. G.; Brownell, R. L. Jr.", result["remaining_text"])
         self.assertNotIn("Order Cetacea", result["remaining_text"])
         self.assertNotIn("Wilson, D. E.; Reeder, D. M.", result["remaining_text"])
-        self.assertNotIn("Mammal Species of the World", result["remaining_text"])
+        self.assertNotIn(
+            "Mammal Species of the World", result["remaining_text"]
+        )
         self.assertNotIn("(2005)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
 
