@@ -52,8 +52,8 @@
 
 .logo-container.transitioning .logo,
 .logo-container.complete .logo {
-  width: 60px;
-  height: 60px;
+  width: 150px;
+  height: 150px;
 }
 
 /* Content - hidden until logo transition completes */
@@ -116,36 +116,36 @@
 .content.complete .letter:nth-child(9) { animation-delay: 0.9s; }
 .content.complete .letter:nth-child(10) { animation-delay: 1.0s; }
 
-/* Position each letter along the semi-circular arc - 10 letters with equal spacing */
+/* Position each letter along the semi-circular arc - uniform spacing between all letters */
 .content.complete .letter:nth-child(1) {
-  transform: rotate(-40deg) translateY(-120px) translateX(-35vw);
+  transform: rotate(-36deg) translateY(-120px) translateX(-27vw);
 }
 .content.complete .letter:nth-child(2) {
-  transform: rotate(-31.11deg) translateY(-110px) translateX(-27.78vw);
+  transform: rotate(-28deg) translateY(-110px) translateX(-22vw);
 }
 .content.complete .letter:nth-child(3) {
-  transform: rotate(-22.22deg) translateY(-100px) translateX(-20.56vw);
+  transform: rotate(-20deg) translateY(-100px) translateX(-17vw);
 }
 .content.complete .letter:nth-child(4) {
-  transform: rotate(-13.33deg) translateY(-90px) translateX(-13.33vw);
+  transform: rotate(-12deg) translateY(-90px) translateX(-11vw);
 }
 .content.complete .letter:nth-child(5) {
-  transform: rotate(-4.44deg) translateY(-80px) translateX(-6.11vw);
+  transform: rotate(-4deg) translateY(-80px) translateX(-4vw);
 }
 .content.complete .letter:nth-child(6) {
-  transform: rotate(4.44deg) translateY(-80px) translateX(6.11vw);
+  transform: rotate(4deg) translateY(-80px) translateX(3vw);
 }
 .content.complete .letter:nth-child(7) {
-  transform: rotate(13.33deg) translateY(-90px) translateX(13.33vw);
+  transform: rotate(12deg) translateY(-90px) translateX(11vw);
 }
 .content.complete .letter:nth-child(8) {
-  transform: rotate(22.22deg) translateY(-100px) translateX(20.56vw);
+  transform: rotate(20deg) translateY(-100px) translateX(17vw);
 }
 .content.complete .letter:nth-child(9) {
-  transform: rotate(31.11deg) translateY(-110px) translateX(27.78vw);
+  transform: rotate(28deg) translateY(-110px) translateX(22vw);
 }
 .content.complete .letter:nth-child(10) {
-  transform: rotate(40deg) translateY(-120px) translateX(35vw);
+  transform: rotate(36deg) translateY(-120px) translateX(27vw);
 }
 
 @keyframes letterFadeIn {

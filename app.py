@@ -310,9 +310,18 @@ def type_1_parser(citation):
         result["authors"] = authors
 
         # Extract just the year (4 digits)
-        year_match = re.search(r"\d{4}", date_text)
-        if year_match:
-            result["year"] = year_match.group(0)
+        # First, check if there's a bracketed year that represents original publication date
+        bracket_year_pattern = r"\[c\.\s*(\d{4})"
+        bracket_year_match = re.search(bracket_year_pattern, citation, re.IGNORECASE)
+        
+        if bracket_year_match:
+            # Use the year from the bracketed part (original publication date)
+            result["year"] = bracket_year_match.group(1)
+        else:
+            # Fall back to the first 4-digit year in parentheses
+            year_match = re.search(r"\d{4}", date_text)
+            if year_match:
+                result["year"] = year_match.group(0)
 
         # Remove any bracketed phrase immediately after the year
         text_after_date = citation[date_end:].strip()

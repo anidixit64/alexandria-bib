@@ -24,75 +24,55 @@ function SearchPage() {
   const [sortDropdown, setSortDropdown] = useState(sortOptions[0]);
   const navigate = useNavigate();
 
-  // Function to get sortable value from citation (structured or unstructured)
-  const getSortableValue = (citation, index, sortType) => {
-    if (toggleStructured && parsedCitations[index]) {
-      const parsed = parsedCitations[index];
+  // Function to get sortable value from parsed citation data
+  const getSortableValue = (originalIndex, sortType) => {
+    const parsed = parsedCitations[originalIndex];
+    
+    if (!parsed) {
+      return '';
+    }
 
-      switch (sortType) {
-        case 'Title A - Z':
-        case 'Title Z - A': {
-          return (
-            parsed.title || parsed.chapter_title || parsed.book_title || ''
-          );
-        }
-        case 'Author A - Z':
-        case 'Author Z - A': {
-          return (
-            parsed.authors ||
-            parsed.chapter_authors ||
-            parsed.book_authors ||
-            ''
-          );
-        }
-        case 'Year Increasing':
-        case 'Year Decreasing': {
-          return parsed.year ? parseInt(parsed.year) : 0;
-        }
-        default: {
-          return '';
-        }
+    switch (sortType) {
+      case 'Title A - Z':
+      case 'Title Z - A': {
+        return (
+          parsed.title || parsed.chapter_title || parsed.book_title || ''
+        );
       }
-    } else {
-      // For unstructured view, try to extract basic info from raw citation
-      switch (sortType) {
-        case 'Title A - Z':
-        case 'Title Z - A': {
-          // Try to extract title from raw citation
-          const titleMatch = citation.match(/(?:\.\s*)([^.]+?)(?:\s*\.|$)/);
-          return titleMatch ? titleMatch[1].trim() : citation;
-        }
-        case 'Author A - Z':
-        case 'Author Z - A': {
-          // Try to extract author from beginning of citation
-          const authorMatch = citation.match(/^([^(]+?)(?:\s*\(|\.)/);
-          return authorMatch ? authorMatch[1].trim() : citation;
-        }
-        case 'Year Increasing':
-        case 'Year Decreasing': {
-          // Try to extract year from citation
-          const yearMatch = citation.match(/\b(19|20)\d{2}\b/);
-          return yearMatch ? parseInt(yearMatch[0]) : 0;
-        }
-        default: {
-          return '';
-        }
+      case 'Author A - Z':
+      case 'Author Z - A': {
+        return (
+          parsed.authors ||
+          parsed.chapter_authors ||
+          parsed.book_authors ||
+          ''
+        );
+      }
+      case 'Year Increasing':
+      case 'Year Decreasing': {
+        return parsed.year ? parseInt(parsed.year) : 0;
+      }
+      default: {
+        return '';
       }
     }
   };
 
   // Function to sort citations based on selected option
   const sortCitations = (citations, sortType) => {
+    // Always create an array of objects with citation and original index
+    const citationsWithIndex = citations.map((citation, index) => ({
+      citation,
+      originalIndex: index
+    }));
+
     if (!sortType || sortType === '') {
-      return citations; // No sorting, return original order
+      return citationsWithIndex; // No sorting, return original order with indices
     }
 
-    const sortedCitations = [...citations].sort((a, b) => {
-      const aIndex = citations.indexOf(a);
-      const bIndex = citations.indexOf(b);
-
-      const aValue = getSortableValue(a, aIndex, sortType);
-      const bValue = getSortableValue(b, bIndex, sortType);
+    const sortedCitationsWithIndex = citationsWithIndex.sort((a, b) => {
+      const aValue = getSortableValue(a.originalIndex, sortType);
+      const bValue = getSortableValue(b.originalIndex, sortType);
 
       // Handle numeric sorting for years
       if (sortType.includes('Year')) {
@@ -116,17 +96,18 @@ function SearchPage() {
       }
     });
 
-    return sortedCitations;
+    // Return the sorted citations with their original indices
+    return sortedCitationsWithIndex;
   };
 
   // Function to render structured citation
-  const renderStructuredCitation = (citation, index) => {
-    const parsed = parsedCitations[index];
+  const renderStructuredCitation = (citation, originalIndex, displayIndex) => {
+    const parsed = parsedCitations[originalIndex];
 
     if (!parsed) {
       return (
-        <div key={index} className="citation-item">
-          <div className="citation-number">{index + 1}</div>
+        <div key={displayIndex} className="citation-item">
+          <div className="citation-number">{displayIndex + 1}</div>
           <div className="citation-content">
             <div className="citation-text">{citation}</div>
           </div>
@@ -137,8 +118,8 @@ function SearchPage() {
     // Check if it's a chapter citation (has chapter_title)
     if (parsed.chapter_title) {
       return (
-        <div key={index} className="citation-item structured">
-          <div className="citation-number">{index + 1}</div>
+        <div key={displayIndex} className="citation-item structured">
+          <div className="citation-number">{displayIndex + 1}</div>
           <div className="citation-content">
             <div className="book-title">
               {parsed.book_title || 'Unknown Book'}
@@ -169,8 +150,8 @@ function SearchPage() {
       );
     } else {
       return (
-        <div key={index} className="citation-item structured">
-          <div className="citation-number">{index + 1}</div>
+        <div key={displayIndex} className="citation-item structured">
+          <div className="citation-number">{displayIndex + 1}</div>
           <div className="citation-content">
             <div className="book-title">{parsed.title || 'Unknown Title'}</div>
             <div className="book-author">
@@ -221,6 +202,32 @@ function SearchPage() {
 
         if (response.ok) {
           setSearchResults(data);
+          
+          // Immediately parse all citations in a single batch request
+          if (data.citations && data.citations.length > 0) {
+            try {
+              const parseResponse = await fetch('http://localhost:5001/api/parse/batch', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ citations: data.citations }),
+              });
+              if (parseResponse.ok) {
+                const parseData = await parseResponse.json();
+                // parseData.results is an array of parsed citations
+                const newParsedCitations = {};
+                parseData.results.forEach((parsed, i) => {
+                  newParsedCitations[i] = parsed;
+                });
+                setParsedCitations(newParsedCitations);
+              } else {
+                console.error('Failed to parse citations in batch.');
+              }
+            } catch (err) {
+              console.error('Batch parse error:', err);
+            }
+          }
         } else {
           setError(data.error || 'Search failed');
         }
@@ -244,36 +251,8 @@ function SearchPage() {
     setSortDropdown(sortOptions[0]); // Reset sort to default
   };
 
-  const handleToggleStructured = async () => {
-    const newToggleState = !toggleStructured;
-    setToggleStructured(newToggleState);
-
-    // If turning on structured view, parse ALL citations in a single batch request
-    if (newToggleState && searchResults?.citations) {
-      try {
-        const response = await fetch('http://localhost:5001/api/parse/batch', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ citations: searchResults.citations }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          // data.results is an array of parsed citations
-          const newParsedCitations = {};
-          data.results.forEach((parsed, i) => {
-            newParsedCitations[i] = parsed;
-          });
-          setParsedCitations(newParsedCitations);
-        } else {
-          setError('Failed to parse citations in batch.');
-        }
-      } catch (err) {
-        setError('Network error during batch parsing.');
-        console.error('Batch parse error:', err);
-      }
-    }
+  const handleToggleStructured = () => {
+    setToggleStructured(!toggleStructured);
   };
 
   const handleSortChange = (selectedOption) => {
@@ -281,7 +260,7 @@ function SearchPage() {
   };
 
   // Get sorted citations based on current sort selection
-  const displayedCitations = searchResults?.citations
+  const sortedCitationsWithIndex = searchResults?.citations
     ? sortCitations(searchResults.citations, sortDropdown.value)
     : [];
 
@@ -292,7 +271,7 @@ function SearchPage() {
           ← Back to Alexandria
         </button>
         <div className="header-title-section">
-          <h1 className="search-title">Explore the Library</h1>
+        <h1 className="search-title">Explore the Library</h1>
         </div>
       </header>
 
@@ -411,17 +390,17 @@ function SearchPage() {
               </div>
             </div>
 
-            {displayedCitations.length > 0 ? (
+            {sortedCitationsWithIndex.length > 0 ? (
               <div className="citations-container">
                 {toggleStructured
-                  ? displayedCitations.map((citation, index) =>
-                      renderStructuredCitation(citation, index)
+                  ? sortedCitationsWithIndex.map((item, index) =>
+                      renderStructuredCitation(item.citation, item.originalIndex, index)
                     )
-                  : displayedCitations.map((citation, index) => (
+                  : sortedCitationsWithIndex.map((item, index) => (
                       <div key={index} className="citation-item">
                         <div className="citation-number">{index + 1}</div>
                         <div className="citation-content">
-                          <div className="citation-text">{citation}</div>
+                          <div className="citation-text">{item.citation ? item.citation : 'No citation found'}</div>
                         </div>
                       </div>
                     ))}
