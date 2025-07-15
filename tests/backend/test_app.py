@@ -327,6 +327,18 @@ class TestType1Parser(unittest.TestCase):
         )
         self.assertEqual(result["isbn"], "978-1541742406")
 
+    def test_sahagun_florentine_codex_citation(self):
+        """Test parsing Sahagún citation with complex date range and multiple volumes"""
+        test_citation = "Sahagún, Bernardino de (1950–82) [c. 1540–85]. Florentine Codex: General History of the Things of New Spain, 13 vols. in 12. vols. I–XII. Charles E. Dibble and Arthur J.O. Anderson (eds., trans., notes and illus.) (translation of Historia General de las Cosas de la Nueva España ed.). Santa Fe, NM and Salt Lake City: School of American Research and the University of Utah Press. ISBN 978-0-87480-082-1"
+        result = self.parser(test_citation)
+        self.assertEqual(result["authors"], "Sahagún, Bernardino de")
+        self.assertEqual(result["year"], "1540")
+        self.assertEqual(
+            result["title"],
+            "Florentine Codex: General History of the Things of New Spain, 13 vols. in 12. vols. I–XII. Charles E. Dibble and Arthur J",
+        )
+        self.assertEqual(result["isbn"], "978-0-87480-082-1")
+
 
 class TestType3Parser(unittest.TestCase):
     """Test the type_3_parser function for citations with quoted chapter titles"""

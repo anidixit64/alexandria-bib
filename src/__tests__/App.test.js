@@ -6,6 +6,7 @@ import App from '../App';
 // Mock the image imports
 jest.mock('../library.jpg', () => 'mocked-library-image');
 jest.mock('../parchment.jpg', () => 'mocked-parchment-image');
+jest.mock('../scroll_logo.png', () => 'mocked-scroll-logo');
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -36,20 +37,18 @@ describe('App Component', () => {
   test('button has correct styling classes', () => {
     render(<App />);
     const button = screen.getByRole('button', { name: /explore the library/i });
-    expect(button).toHaveClass('explore-library-btn');
+    expect(button).toHaveClass('explore-button');
   });
 
-  test('curved text container exists', () => {
+  test('title container exists', () => {
     render(<App />);
-    const curvedTextContainer = document.querySelector('.curved-text');
-    expect(curvedTextContainer).toBeInTheDocument();
+    const titleContainer = document.querySelector('.title');
+    expect(titleContainer).toBeInTheDocument();
   });
 
   test('all letter spans have correct classes', () => {
     render(<App />);
-    for (let i = 0; i < 10; i++) {
-      const letterSpan = document.querySelector(`.letter-${i}`);
-      expect(letterSpan).toBeInTheDocument();
-    }
+    const letterSpans = document.querySelectorAll('.letter');
+    expect(letterSpans.length).toBe(10); // "Alexandria" has 10 letters
   });
 });
