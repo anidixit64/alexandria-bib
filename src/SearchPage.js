@@ -8,6 +8,7 @@ function SearchPage() {
   const [searchResults, setSearchResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [disambiguationOptions, setDisambiguationOptions] = useState(null);
 
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
@@ -120,26 +121,10 @@ function SearchPage() {
               {parsed.book_title || 'Unknown Book'}
             </div>
             <div className="book-author">
-              <strong>Book Authors:</strong> {parsed.book_authors || 'Unknown'}
+              by {parsed.book_authors || 'Unknown'}
             </div>
-            <div className="chapter-title">
-              <strong>Chapter:</strong> {parsed.chapter_title}
-            </div>
-            <div className="book-author">
-              <strong>Chapter Author:</strong>{' '}
-              {parsed.chapter_authors || 'Unknown'}
-            </div>
-            {parsed.year && <div className="year">{parsed.year}</div>}
-            {parsed.isbn && (
-              <div className="isbn">
-                <strong>ISBN:</strong> {parsed.isbn}
-              </div>
-            )}
-            {parsed.remaining_text && (
-              <div className="remaining-text">
-                <strong>Additional Info:</strong> {parsed.remaining_text}
-              </div>
-            )}
+            {parsed.year && <div className="year-badge">{parsed.year}</div>}
+            {parsed.isbn && <div className="isbn-badge">{parsed.isbn}</div>}
           </div>
         </div>
       );
@@ -149,25 +134,9 @@ function SearchPage() {
           <div className="citation-number">{displayIndex + 1}</div>
           <div className="citation-content">
             <div className="book-title">{parsed.title || 'Unknown Title'}</div>
-            <div className="book-author">
-              <strong>Author:</strong> {parsed.authors || 'Unknown'}
-            </div>
-            {parsed.editor && (
-              <div className="book-author">
-                <strong>Editor:</strong> {parsed.editor}
-              </div>
-            )}
-            {parsed.year && <div className="year">{parsed.year}</div>}
-            {parsed.isbn && (
-              <div className="isbn">
-                <strong>ISBN:</strong> {parsed.isbn}
-              </div>
-            )}
-            {parsed.remaining_text && (
-              <div className="remaining-text">
-                <strong>Additional Info:</strong> {parsed.remaining_text}
-              </div>
-            )}
+            <div className="book-author">by {parsed.authors || 'Unknown'}</div>
+            {parsed.year && <div className="year-badge">{parsed.year}</div>}
+            {parsed.isbn && <div className="isbn-badge">{parsed.isbn}</div>}
           </div>
         </div>
       );
@@ -180,6 +149,7 @@ function SearchPage() {
       setIsLoading(true);
       setError(null);
       setSearchResults(null);
+      setDisambiguationOptions(null);
       setParsedCitations({});
       setToggleStructured(false); // Reset toggle to off for new searches
       setSortDropdown(sortOptions[0]); // Reset sort to default
@@ -196,34 +166,42 @@ function SearchPage() {
         const data = await response.json();
 
         if (response.ok) {
-          setSearchResults(data);
+          // Check if this is a disambiguation or suggestions response
+          if (
+            data.status === 'disambiguation' ||
+            data.status === 'suggestions'
+          ) {
+            setDisambiguationOptions(data.options);
+          } else {
+            setSearchResults(data);
 
-          // Immediately parse all citations in a single batch request
-          if (data.citations && data.citations.length > 0) {
-            try {
-              const parseResponse = await fetch(
-                'http://localhost:5001/api/parse/batch',
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({ citations: data.citations }),
+            // Immediately parse all citations in a single batch request
+            if (data.citations && data.citations.length > 0) {
+              try {
+                const parseResponse = await fetch(
+                  'http://localhost:5001/api/parse/batch',
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ citations: data.citations }),
+                  }
+                );
+                if (parseResponse.ok) {
+                  const parseData = await parseResponse.json();
+                  // parseData.results is an array of parsed citations
+                  const newParsedCitations = {};
+                  parseData.results.forEach((parsed, i) => {
+                    newParsedCitations[i] = parsed;
+                  });
+                  setParsedCitations(newParsedCitations);
+                } else {
+                  console.error('Failed to parse citations in batch.');
                 }
-              );
-              if (parseResponse.ok) {
-                const parseData = await parseResponse.json();
-                // parseData.results is an array of parsed citations
-                const newParsedCitations = {};
-                parseData.results.forEach((parsed, i) => {
-                  newParsedCitations[i] = parsed;
-                });
-                setParsedCitations(newParsedCitations);
-              } else {
-                console.error('Failed to parse citations in batch.');
+              } catch (err) {
+                console.error('Batch parse error:', err);
               }
-            } catch (err) {
-              console.error('Batch parse error:', err);
             }
           }
         } else {
@@ -242,9 +220,68 @@ function SearchPage() {
     navigate('/');
   };
 
+  const handleDisambiguationOption = async (option) => {
+    setIsLoading(true);
+    setError(null);
+    setDisambiguationOptions(null);
+
+    try {
+      const response = await fetch('http://localhost:5001/api/search/page', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page_title: option.title }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSearchResults(data);
+
+        // Immediately parse all citations in a single batch request
+        if (data.citations && data.citations.length > 0) {
+          try {
+            const parseResponse = await fetch(
+              'http://localhost:5001/api/parse/batch',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ citations: data.citations }),
+              }
+            );
+            if (parseResponse.ok) {
+              const parseData = await parseResponse.json();
+              // parseData.results is an array of parsed citations
+              const newParsedCitations = {};
+              parseData.results.forEach((parsed, i) => {
+                newParsedCitations[i] = parsed;
+              });
+              setParsedCitations(newParsedCitations);
+            } else {
+              console.error('Failed to parse citations in batch.');
+            }
+          } catch (err) {
+            console.error('Batch parse error:', err);
+          }
+        }
+      } else {
+        setError(data.error || 'Failed to fetch page content');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Disambiguation option error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
+    setDisambiguationOptions(null);
     setParsedCitations({});
     setSortDropdown(sortOptions[0]); // Reset sort to default
   };
@@ -294,6 +331,30 @@ function SearchPage() {
             </button>
           </div>
         </form>
+
+        {/* Disambiguation/Suggestions Section */}
+        {disambiguationOptions && (
+          <div className="disambiguation-section">
+            <div className="disambiguation-header">
+              <h2>Did you mean:</h2>
+              <button className="close-button" onClick={closeResults}>
+                ×
+              </button>
+            </div>
+            <div className="disambiguation-options">
+              {disambiguationOptions.map((option, index) => (
+                <button
+                  key={index}
+                  className="disambiguation-option"
+                  onClick={() => handleDisambiguationOption(option)}
+                  disabled={isLoading}
+                >
+                  {option.display_text || option.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Results Section */}
         {searchResults && (
