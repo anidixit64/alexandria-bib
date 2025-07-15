@@ -517,7 +517,9 @@ def type_1_parser(citation):
         if comma_match:
             next_word = comma_match.group(1).strip().lower()
             # Check if this looks like a location:publisher pattern
-            location_publisher_pattern = r",\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*:\s*([A-Z][a-zA-Z\s&]+)"
+            location_publisher_pattern = (
+                r",\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*:\s*([A-Z][a-zA-Z\s&]+)"
+            )
             loc_pub_match = re.search(location_publisher_pattern, text_after_date)
             if loc_pub_match:
                 comma_stop = loc_pub_match.start()
@@ -1359,12 +1361,12 @@ def parse_batch():
         else:
             parsed = type_1_parser(citation)
         results.append(parsed)
-    
+
     response = jsonify({"results": results})
     # Add cache-busting headers
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     return response
 
 
@@ -1469,9 +1471,9 @@ def search_books():
             }
         )
         # Add cache-busting headers
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
     except Exception as e:
         print(f"Error in search_books: {e}")
@@ -1525,9 +1527,9 @@ def parse_type1():
         result = type_1_parser(citation)
         response = jsonify(result)
         # Add cache-busting headers
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
     except Exception as e:
         print(f"Error in parse_type1: {e}")
@@ -1546,9 +1548,9 @@ def parse_type2():
         result = type_2_parser(citation)
         response = jsonify(result)
         # Add cache-busting headers
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
     except Exception as e:
         print(f"Error in parse_type2: {e}")
@@ -1567,9 +1569,9 @@ def parse_type3():
         result = type_3_parser(citation)
         response = jsonify(result)
         # Add cache-busting headers
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
     except Exception as e:
         print(f"Error in parse_type3: {e}")
@@ -1588,9 +1590,9 @@ def parse_type5():
         result = type_5_parser(citation)
         response = jsonify(result)
         # Add cache-busting headers
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
     except Exception as e:
         print(f"Error in parse_type5: {e}")

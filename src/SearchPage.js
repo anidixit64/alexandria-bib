@@ -155,13 +155,16 @@ function SearchPage() {
       setSortDropdown(sortOptions[0]); // Reset sort to default
 
       try {
-        const response = await fetch(`http://localhost:5001/api/search?t=${Date.now()}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query: searchQuery }),
-        });
+        const response = await fetch(
+          `http://localhost:5001/api/search?t=${Date.now()}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: searchQuery }),
+          }
+        );
 
         const data = await response.json();
 
@@ -226,13 +229,16 @@ function SearchPage() {
     setDisambiguationOptions(null);
 
     try {
-      const response = await fetch(`http://localhost:5001/api/search/page?t=${Date.now()}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ page_title: option.title }),
-      });
+      const response = await fetch(
+        `http://localhost:5001/api/search/page?t=${Date.now()}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ page_title: option.title }),
+        }
+      );
 
       const data = await response.json();
 
