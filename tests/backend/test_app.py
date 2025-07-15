@@ -334,8 +334,8 @@ class TestType1Parser(unittest.TestCase):
         self.assertEqual(result["authors"], "Sahagún, Bernardino de")
         self.assertEqual(result["year"], "1540")
         self.assertEqual(
-            result["title"], 
-            "Florentine Codex: General History of the Things of New Spain, 13 vols. in 12. vols. I–XII. Charles E. Dibble and Arthur J"
+            result["title"],
+            "Florentine Codex: General History of the Things of New Spain, 13 vols. in 12. vols. I–XII. Charles E. Dibble and Arthur J",
         )
         self.assertEqual(result["isbn"], "978-0-87480-082-1")
 

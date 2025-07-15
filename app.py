@@ -313,7 +313,7 @@ def type_1_parser(citation):
         # First, check if there's a bracketed year that represents original publication date
         bracket_year_pattern = r"\[c\.\s*(\d{4})"
         bracket_year_match = re.search(bracket_year_pattern, citation, re.IGNORECASE)
-        
+
         if bracket_year_match:
             # Use the year from the bracketed part (original publication date)
             result["year"] = bracket_year_match.group(1)
