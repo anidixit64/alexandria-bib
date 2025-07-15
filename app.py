@@ -33,6 +33,31 @@ def search_wikipedia(query):
         return None
 
 
+def search_wikipedia_with_suggestions(query):
+    """Search Wikipedia and also get search suggestions for typos"""
+    search_url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "opensearch",
+        "format": "json",
+        "search": query,
+        "limit": 10,
+        "namespace": 0,
+    }
+
+    try:
+        response = requests.get(search_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        # opensearch returns: [query, [titles], [descriptions], [urls]]
+        if len(data) >= 2 and data[1]:
+            return data[1]  # Return list of suggested titles
+        return []
+    except Exception as e:
+        print(f"Error getting Wikipedia suggestions: {e}")
+        return []
+
+
 def is_disambiguation_page(html_content):
     """Check if the HTML content is a disambiguation page"""
     soup = BeautifulSoup(html_content, "html.parser")
@@ -1357,16 +1382,39 @@ def search_books():
             return jsonify({"error": "Query is required", "status": "error"}), 400
         
         search_results = search_wikipedia(query)
+        
+        # If no search results, check for "did you mean" suggestions
         if not search_results:
-            return (
-                jsonify(
+            suggestions = search_wikipedia_with_suggestions(query)
+            if suggestions:
+                # Convert suggestions to the same format as disambiguation options
+                suggestion_options = []
+                for suggestion in suggestions[:5]:  # Top 5 suggestions
+                    suggestion_options.append({
+                        'title': suggestion,
+                        'display_text': suggestion,
+                        'url': f'/wiki/{suggestion.replace(" ", "_")}'
+                    })
+                
+                return jsonify(
                     {
-                        "error": f'No Wikipedia page found for "{query}"',
-                        "status": "error",
+                        "query": query,
+                        "page_title": None,
+                        "suggestions": True,
+                        "options": suggestion_options,
+                        "status": "suggestions",
                     }
-                ),
-                404,
-            )
+                )
+            else:
+                return (
+                    jsonify(
+                        {
+                            "error": f'No Wikipedia page found for "{query}"',
+                            "status": "error",
+                        }
+                    ),
+                    404,
+                )
         
         # Get the best match (first result)
         best_match = search_results[0]["title"]

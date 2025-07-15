@@ -9,6 +9,7 @@ function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [disambiguationOptions, setDisambiguationOptions] = useState(null);
+  const [disambiguationType, setDisambiguationType] = useState(null); // 'disambiguation' or 'suggestions'
 
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
@@ -198,9 +199,10 @@ function SearchPage() {
         const data = await response.json();
 
         if (response.ok) {
-          // Check if this is a disambiguation response
-          if (data.status === 'disambiguation') {
+          // Check if this is a disambiguation or suggestions response
+          if (data.status === 'disambiguation' || data.status === 'suggestions') {
             setDisambiguationOptions(data.options);
+            setDisambiguationType(data.status);
           } else {
             setSearchResults(data);
 
@@ -311,6 +313,7 @@ function SearchPage() {
     setSearchResults(null);
     setError(null);
     setDisambiguationOptions(null);
+    setDisambiguationType(null);
     setParsedCitations({});
     setSortDropdown(sortOptions[0]); // Reset sort to default
   };
@@ -361,11 +364,20 @@ function SearchPage() {
           </div>
         </form>
 
-        {/* Disambiguation Section */}
+        {/* Disambiguation/Suggestions Section */}
         {disambiguationOptions && (
           <div className="disambiguation-section">
             <div className="disambiguation-header">
-              <h2>Did you mean:</h2>
+              <h2>
+                {disambiguationType === 'suggestions' 
+                  ? 'Did you mean:' 
+                  : 'Did you mean:'}
+              </h2>
+              {disambiguationType === 'suggestions' && (
+                <p className="suggestions-subtitle">
+                  No exact match found. Here are some suggestions:
+                </p>
+              )}
               <button className="close-button" onClick={closeResults}>
                 ×
               </button>
