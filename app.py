@@ -508,6 +508,7 @@ def type_1_parser(citation):
             "dover",
         ]
         # Find comma followed by publisher-like word or ISBN/retrieved/archived
+        # Also handle location:publisher format (e.g., "Sydney: Allen & Unwin")
         comma_pat = re.compile(
             r",\s*([A-Za-z& ]+)(?:\s*:\s*[A-Za-z& ]+)?", re.IGNORECASE
         )
@@ -515,10 +516,17 @@ def type_1_parser(citation):
         comma_stop = None
         if comma_match:
             next_word = comma_match.group(1).strip().lower()
-            for kw in publisher_keywords:
-                if next_word.startswith(kw):
-                    comma_stop = comma_match.start()
-                    break
+            # Check if this looks like a location:publisher pattern
+            location_publisher_pattern = r",\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*:\s*([A-Z][a-zA-Z\s&]+)"
+            loc_pub_match = re.search(location_publisher_pattern, text_after_date)
+            if loc_pub_match:
+                comma_stop = loc_pub_match.start()
+            else:
+                # Check against publisher keywords
+                for kw in publisher_keywords:
+                    if next_word.startswith(kw):
+                        comma_stop = comma_match.start()
+                        break
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived'
         # But don't stop at parentheses that are part of the title
         # Also be smarter about periods in names (like "Ulysses S. Grant")
@@ -1351,7 +1359,13 @@ def parse_batch():
         else:
             parsed = type_1_parser(citation)
         results.append(parsed)
-    return jsonify({"results": results})
+    
+    response = jsonify({"results": results})
+    # Add cache-busting headers
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route("/")
@@ -1445,7 +1459,7 @@ def search_books():
 
         # Regular page - extract citations
         citations = extract_book_citations(html_content)
-        return jsonify(
+        response = jsonify(
             {
                 "query": query,
                 "page_title": best_match,
@@ -1454,6 +1468,11 @@ def search_books():
                 "status": "success",
             }
         )
+        # Add cache-busting headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         print(f"Error in search_books: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
@@ -1504,7 +1523,12 @@ def parse_type1():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_1_parser(citation)
-        return jsonify(result)
+        response = jsonify(result)
+        # Add cache-busting headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         print(f"Error in parse_type1: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
@@ -1520,7 +1544,12 @@ def parse_type2():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_2_parser(citation)
-        return jsonify(result)
+        response = jsonify(result)
+        # Add cache-busting headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         print(f"Error in parse_type2: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
@@ -1536,7 +1565,12 @@ def parse_type3():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_3_parser(citation)
-        return jsonify(result)
+        response = jsonify(result)
+        # Add cache-busting headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         print(f"Error in parse_type3: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
@@ -1552,7 +1586,12 @@ def parse_type5():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_5_parser(citation)
-        return jsonify(result)
+        response = jsonify(result)
+        # Add cache-busting headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         print(f"Error in parse_type5: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500

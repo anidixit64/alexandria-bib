@@ -369,7 +369,9 @@ class TestType3Parser(unittest.TestCase):
         self.assertNotIn("Mead, J. G.; Brownell, R. L. Jr.", result["remaining_text"])
         self.assertNotIn("Order Cetacea", result["remaining_text"])
         self.assertNotIn("Wilson, D. E.; Reeder, D. M.", result["remaining_text"])
-        self.assertNotIn("Mammal Species of the World", result["remaining_text"])
+        self.assertNotIn(
+            "Mammal Species of the World", result["remaining_text"]
+        )
         self.assertNotIn("(2005)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
 
@@ -595,11 +597,14 @@ class TestSpecificCitations(unittest.TestCase):
             "Frazier, Herb; Bernard Edward Powers Jr.; Wentworth, Marjory",
         )
         self.assertEqual(result["year"], "2016")
-        # Note: Current parser includes publisher info in title for this format
+        # Note: Improved parser now correctly separates title from publisher info
         self.assertEqual(
             result["title"],
-            "We Are Charleston: Tragedy and Triumph at Mother Emanuel, Nashville: W Publishing,",
+            "We Are Charleston: Tragedy and Triumph at Mother Emanuel",
         )
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("Nashville: W Publishing", result["remaining_text"])
+        self.assertNotIn("Nashville: W Publishing", result["title"])
         self.assertEqual(result["isbn"], "9780718041496")
         # Check that extracted parts are removed from remaining text
         self.assertNotIn("Frazier, Herb", result["remaining_text"])
@@ -616,17 +621,111 @@ class TestSpecificCitations(unittest.TestCase):
 
         self.assertEqual(result["authors"], "Thompson, Michael D.")
         self.assertEqual(result["year"], "2015")
-        # Note: Current parser includes publisher info in title for this format
+        # Note: Improved parser now correctly separates title from publisher info
         self.assertEqual(
             result["title"],
-            "Working on the Dock of the Bay: Labor and Enterprise in an Antebellum Southern Port, Columbia: University of South Carolina Press,",
+            "Working on the Dock of the Bay: Labor and Enterprise in an Antebellum Southern Port",
         )
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("Columbia: University of South Carolina Press", result["remaining_text"])
+        self.assertNotIn("Columbia: University of South Carolina Press", result["title"])
         self.assertEqual(result["isbn"], "9781611174755")
         # Check that extracted parts are removed from remaining text
         self.assertNotIn("Thompson, Michael D.", result["remaining_text"])
         self.assertNotIn("Working on the Dock of the Bay", result["remaining_text"])
         self.assertNotIn("(2015)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
+
+
+class TestTasmaniaCitations(unittest.TestCase):
+    """Test specific Tasmania citations that should be parsed correctly"""
+
+    def setUp(self):
+        from app import type_1_parser
+        self.parser = type_1_parser
+
+    def test_ryan_tasmanian_aborigines_citation(self):
+        """Test parsing Ryan, Lyndall (2012), Tasmanian Aborigines, Sydney: Allen & Unwin,, ISBN 978-1-74237-068-2"""
+        test_citation = "Ryan, Lyndall (2012), Tasmanian Aborigines, Sydney: Allen & Unwin,, ISBN 978-1-74237-068-2"
+        result = self.parser(test_citation)
+        
+        self.assertEqual(result["authors"], "Ryan, Lyndall")
+        self.assertEqual(result["year"], "2012")
+        self.assertEqual(result["title"], "Tasmanian Aborigines")
+        self.assertEqual(result["isbn"], "978-1-74237-068-2")
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("Sydney: Allen & Unwin", result["remaining_text"])
+        self.assertNotIn("Sydney: Allen & Unwin", result["title"])
+
+    def test_boyce_van_diemens_land_citation(self):
+        """Test parsing Boyce, James (2010), Van Diemen's Land, Melbourne: Black Inc, pp. 140, 145, 202, ISBN 978-1-86395-491-4"""
+        test_citation = "Boyce, James (2010), Van Diemen's Land, Melbourne: Black Inc, pp. 140, 145, 202, ISBN 978-1-86395-491-4"
+        result = self.parser(test_citation)
+        
+        self.assertEqual(result["authors"], "Boyce, James")
+        self.assertEqual(result["year"], "2010")
+        self.assertEqual(result["title"], "Van Diemen's Land")
+        self.assertEqual(result["isbn"], "978-1-86395-491-4")
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("Melbourne: Black Inc", result["remaining_text"])
+        self.assertNotIn("Melbourne: Black Inc", result["title"])
+
+    def test_clements_black_war_citation(self):
+        """Test parsing Clements, Nicholas (2014), The Black War, Brisbane: University of Queensland Press,, ISBN 978-0-70225-006-4"""
+        test_citation = "Clements, Nicholas (2014), The Black War, Brisbane: University of Queensland Press,, ISBN 978-0-70225-006-4"
+        result = self.parser(test_citation)
+        
+        self.assertEqual(result["authors"], "Clements, Nicholas")
+        self.assertEqual(result["year"], "2014")
+        self.assertEqual(result["title"], "The Black War")
+        self.assertEqual(result["isbn"], "978-0-70225-006-4")
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("Brisbane: University of Queensland Press", result["remaining_text"])
+        self.assertNotIn("Brisbane: University of Queensland Press", result["title"])
+
+    def test_batch_parsing_tasmania_citations(self):
+        """Test that all three Tasmania citations are parsed correctly in batch"""
+        from app import parse_batch
+        from app import app
+        
+        test_app = app.test_client()
+        test_app.testing = True
+        
+        citations = [
+            "Ryan, Lyndall (2012), Tasmanian Aborigines, Sydney: Allen & Unwin,, ISBN 978-1-74237-068-2",
+            "Boyce, James (2010), Van Diemen's Land, Melbourne: Black Inc, pp. 140, 145, 202, ISBN 978-1-86395-491-4",
+            "Clements, Nicholas (2014), The Black War, Brisbane: University of Queensland Press,, ISBN 978-0-70225-006-4"
+        ]
+        
+        response = test_app.post(
+            "/api/parse/batch",
+            data=json.dumps({"citations": citations}),
+            content_type="application/json"
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        results = data["results"]
+        
+        self.assertEqual(len(results), 3)
+        
+        # Check Ryan citation
+        self.assertEqual(results[0]["authors"], "Ryan, Lyndall")
+        self.assertEqual(results[0]["year"], "2012")
+        self.assertEqual(results[0]["title"], "Tasmanian Aborigines")
+        self.assertEqual(results[0]["isbn"], "978-1-74237-068-2")
+        
+        # Check Boyce citation
+        self.assertEqual(results[1]["authors"], "Boyce, James")
+        self.assertEqual(results[1]["year"], "2010")
+        self.assertEqual(results[1]["title"], "Van Diemen's Land")
+        self.assertEqual(results[1]["isbn"], "978-1-86395-491-4")
+        
+        # Check Clements citation
+        self.assertEqual(results[2]["authors"], "Clements, Nicholas")
+        self.assertEqual(results[2]["year"], "2014")
+        self.assertEqual(results[2]["title"], "The Black War")
+        self.assertEqual(results[2]["isbn"], "978-0-70225-006-4")
 
 
 if __name__ == "__main__":
