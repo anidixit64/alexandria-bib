@@ -121,7 +121,6 @@ def extract_disambiguation_options(html_content):
 
     for link in links:
         href = link.get("href", "")
-        title = link.get("title", "")
         text = link.get_text().strip()
 
         # Skip navigation links, external links, and special pages
@@ -146,7 +145,7 @@ def extract_disambiguation_options(html_content):
             and not text.endswith("]")
             and not text.startswith("All pages")
             and not text.startswith("All articles")
-            and not "(disambiguation)" in text.lower()
+            and "(disambiguation)" not in text.lower()
         ):
 
             # Extract the page title from the href
