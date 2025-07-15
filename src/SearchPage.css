@@ -426,10 +426,53 @@
 .citation-item.structured {
   flex-direction: column;
   gap: 1rem;
+  position: relative;
 }
 
 .citation-item:last-child {
   margin-bottom: 0;
+}
+
+.year-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 213, 0, 0.9), rgba(255, 213, 0, 0.7));
+  border: 2px solid rgba(44, 24, 16, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Almendra', serif;
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #2c1810;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.isbn-badge {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  min-width: 80px;
+  height: 40px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(44, 24, 16, 0.8), rgba(44, 24, 16, 0.6));
+  border: 2px solid rgba(44, 24, 16, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Almendra', serif;
+  font-weight: bold;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 0 0.5rem;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .citation-number {
@@ -750,6 +793,23 @@
 
   .remaining-text {
     font-size: 0.8rem;
+  }
+
+  .year-badge {
+    width: 40px;
+    height: 40px;
+    font-size: 0.8rem;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .isbn-badge {
+    min-width: 70px;
+    height: 35px;
+    font-size: 0.7rem;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    padding: 0 0.3rem;
   }
 
   .header-controls {

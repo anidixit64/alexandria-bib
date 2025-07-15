@@ -9,7 +9,6 @@ function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [disambiguationOptions, setDisambiguationOptions] = useState(null);
-  const [disambiguationType, setDisambiguationType] = useState(null); // 'disambiguation' or 'suggestions'
 
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
@@ -122,24 +121,16 @@ function SearchPage() {
               {parsed.book_title || 'Unknown Book'}
             </div>
             <div className="book-author">
-              <strong>Book Authors:</strong> {parsed.book_authors || 'Unknown'}
+              by {parsed.book_authors || 'Unknown'}
             </div>
-            <div className="chapter-title">
-              <strong>Chapter:</strong> {parsed.chapter_title}
-            </div>
-            <div className="book-author">
-              <strong>Chapter Author:</strong>{' '}
-              {parsed.chapter_authors || 'Unknown'}
-            </div>
-            {parsed.year && <div className="year">{parsed.year}</div>}
-            {parsed.isbn && (
-              <div className="isbn">
-                <strong>ISBN:</strong> {parsed.isbn}
+            {parsed.year && (
+              <div className="year-badge">
+                {parsed.year}
               </div>
             )}
-            {parsed.remaining_text && (
-              <div className="remaining-text">
-                <strong>Additional Info:</strong> {parsed.remaining_text}
+            {parsed.isbn && (
+              <div className="isbn-badge">
+                {parsed.isbn}
               </div>
             )}
           </div>
@@ -152,22 +143,16 @@ function SearchPage() {
           <div className="citation-content">
             <div className="book-title">{parsed.title || 'Unknown Title'}</div>
             <div className="book-author">
-              <strong>Author:</strong> {parsed.authors || 'Unknown'}
+              by {parsed.authors || 'Unknown'}
             </div>
-            {parsed.editor && (
-              <div className="book-author">
-                <strong>Editor:</strong> {parsed.editor}
+            {parsed.year && (
+              <div className="year-badge">
+                {parsed.year}
               </div>
             )}
-            {parsed.year && <div className="year">{parsed.year}</div>}
             {parsed.isbn && (
-              <div className="isbn">
-                <strong>ISBN:</strong> {parsed.isbn}
-              </div>
-            )}
-            {parsed.remaining_text && (
-              <div className="remaining-text">
-                <strong>Additional Info:</strong> {parsed.remaining_text}
+              <div className="isbn-badge">
+                {parsed.isbn}
               </div>
             )}
           </div>
@@ -202,7 +187,6 @@ function SearchPage() {
           // Check if this is a disambiguation or suggestions response
           if (data.status === 'disambiguation' || data.status === 'suggestions') {
             setDisambiguationOptions(data.options);
-            setDisambiguationType(data.status);
           } else {
             setSearchResults(data);
 
@@ -312,8 +296,7 @@ function SearchPage() {
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
-    setDisambiguationOptions(null);
-    setDisambiguationType(null);
+          setDisambiguationOptions(null);
     setParsedCitations({});
     setSortDropdown(sortOptions[0]); // Reset sort to default
   };
@@ -368,16 +351,7 @@ function SearchPage() {
         {disambiguationOptions && (
           <div className="disambiguation-section">
             <div className="disambiguation-header">
-              <h2>
-                {disambiguationType === 'suggestions' 
-                  ? 'Did you mean:' 
-                  : 'Did you mean:'}
-              </h2>
-              {disambiguationType === 'suggestions' && (
-                <p className="suggestions-subtitle">
-                  No exact match found. Here are some suggestions:
-                </p>
-              )}
+              <h2>Did you mean:</h2>
               <button className="close-button" onClick={closeResults}>
                 ×
               </button>
