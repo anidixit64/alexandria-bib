@@ -10,7 +10,7 @@ const LandingPage = () => {
   useEffect(() => {
     // Start with large centered logo
     setAnimationState('loading');
-    
+
     // After 2 seconds, start transition to corner
     const transitionTimer = setTimeout(() => {
       setAnimationState('transitioning');
@@ -34,13 +34,9 @@ const LandingPage = () => {
   return (
     <div className="landing-page">
       <div className={`logo-container ${animationState}`}>
-        <img 
-          src={scrollLogo} 
-          alt="Alexandria Logo" 
-          className="logo"
-        />
+        <img src={scrollLogo} alt="Alexandria Logo" className="logo" />
       </div>
-      
+
       <div className={`content ${animationState}`}>
         <h1 className="title">
           <span className="letter">A</span>

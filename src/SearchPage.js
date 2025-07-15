@@ -27,7 +27,7 @@ function SearchPage() {
   // Function to get sortable value from parsed citation data
   const getSortableValue = (originalIndex, sortType) => {
     const parsed = parsedCitations[originalIndex];
-    
+
     if (!parsed) {
       return '';
     }
@@ -35,17 +35,12 @@ function SearchPage() {
     switch (sortType) {
       case 'Title A - Z':
       case 'Title Z - A': {
-        return (
-          parsed.title || parsed.chapter_title || parsed.book_title || ''
-        );
+        return parsed.title || parsed.chapter_title || parsed.book_title || '';
       }
       case 'Author A - Z':
       case 'Author Z - A': {
         return (
-          parsed.authors ||
-          parsed.chapter_authors ||
-          parsed.book_authors ||
-          ''
+          parsed.authors || parsed.chapter_authors || parsed.book_authors || ''
         );
       }
       case 'Year Increasing':
@@ -63,7 +58,7 @@ function SearchPage() {
     // Always create an array of objects with citation and original index
     const citationsWithIndex = citations.map((citation, index) => ({
       citation,
-      originalIndex: index
+      originalIndex: index,
     }));
 
     if (!sortType || sortType === '') {
@@ -202,17 +197,20 @@ function SearchPage() {
 
         if (response.ok) {
           setSearchResults(data);
-          
+
           // Immediately parse all citations in a single batch request
           if (data.citations && data.citations.length > 0) {
             try {
-              const parseResponse = await fetch('http://localhost:5001/api/parse/batch', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ citations: data.citations }),
-              });
+              const parseResponse = await fetch(
+                'http://localhost:5001/api/parse/batch',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ citations: data.citations }),
+                }
+              );
               if (parseResponse.ok) {
                 const parseData = await parseResponse.json();
                 // parseData.results is an array of parsed citations
@@ -271,7 +269,7 @@ function SearchPage() {
           ← Back to Alexandria
         </button>
         <div className="header-title-section">
-        <h1 className="search-title">Explore the Library</h1>
+          <h1 className="search-title">Explore the Library</h1>
         </div>
       </header>
 
@@ -394,13 +392,21 @@ function SearchPage() {
               <div className="citations-container">
                 {toggleStructured
                   ? sortedCitationsWithIndex.map((item, index) =>
-                      renderStructuredCitation(item.citation, item.originalIndex, index)
+                      renderStructuredCitation(
+                        item.citation,
+                        item.originalIndex,
+                        index
+                      )
                     )
                   : sortedCitationsWithIndex.map((item, index) => (
                       <div key={index} className="citation-item">
                         <div className="citation-number">{index + 1}</div>
                         <div className="citation-content">
-                          <div className="citation-text">{item.citation ? item.citation : 'No citation found'}</div>
+                          <div className="citation-text">
+                            {item.citation
+                              ? item.citation
+                              : 'No citation found'}
+                          </div>
                         </div>
                       </div>
                     ))}
