@@ -48,7 +48,7 @@ def search_wikipedia_with_suggestions(query):
         response = requests.get(search_url, params=params)
         response.raise_for_status()
         data = response.json()
-        
+
         # opensearch returns: [query, [titles], [descriptions], [urls]]
         if len(data) >= 2 and data[1]:
             return data[1]  # Return list of suggested titles
@@ -61,7 +61,7 @@ def search_wikipedia_with_suggestions(query):
 def is_disambiguation_page(html_content):
     """Check if the HTML content is a disambiguation page"""
     soup = BeautifulSoup(html_content, "html.parser")
-    
+
     # Check for disambiguation indicators in the page content
     disambiguation_indicators = [
         "this disambiguation page lists",
@@ -74,35 +74,35 @@ def is_disambiguation_page(html_content):
         "this page lists articles with the same name",
         "topics referred to by the same term",
     ]
-    
+
     # Check all paragraphs for disambiguation indicators
-    paragraphs = soup.find_all('p')
+    paragraphs = soup.find_all("p")
     for para in paragraphs:
         para_text = para.get_text().lower()
         for indicator in disambiguation_indicators:
             if indicator in para_text:
                 return True
-    
+
     # Check for disambiguation template/box
-    disambig_templates = soup.find_all('table', class_='ambox-disambig')
+    disambig_templates = soup.find_all("table", class_="ambox-disambig")
     if disambig_templates:
         return True
-    
+
     # Check for disambiguation box with class dmbox-disambig
-    disambig_boxes = soup.find_all('div', class_='dmbox-disambig')
+    disambig_boxes = soup.find_all("div", class_="dmbox-disambig")
     if disambig_boxes:
         return True
-    
+
     # Check for disambiguation icon
-    disambig_icons = soup.find_all('img', alt='Disambiguation icon')
+    disambig_icons = soup.find_all("img", alt="Disambiguation icon")
     if disambig_icons:
         return True
-    
+
     # Check page categories for disambiguation indicators
-    categories = soup.find_all('a', href=lambda x: x and 'Category:Disambiguation' in x)
+    categories = soup.find_all("a", href=lambda x: x and "Category:Disambiguation" in x)
     if categories:
         return True
-    
+
     return False
 
 
@@ -110,58 +110,56 @@ def extract_disambiguation_options(html_content):
     """Extract possible options from a disambiguation page"""
     soup = BeautifulSoup(html_content, "html.parser")
     options = []
-    
+
     # Look for links in the main content area
-    main_content = soup.find('div', id='mw-content-text')
+    main_content = soup.find("div", id="mw-content-text")
     if not main_content:
         return options
-    
+
     # Find all links that could be disambiguation options
-    links = main_content.find_all('a', href=True)
-    
+    links = main_content.find_all("a", href=True)
+
     for link in links:
-        href = link.get('href', '')
-        title = link.get('title', '')
+        href = link.get("href", "")
+        title = link.get("title", "")
         text = link.get_text().strip()
-        
+
         # Skip navigation links, external links, and special pages
-        if (href.startswith('/wiki/') and 
-            not href.startswith('/wiki/Special:') and
-            not href.startswith('/wiki/Help:') and
-            not href.startswith('/wiki/Wikipedia:') and
-            not href.startswith('/wiki/File:') and
-            not href.startswith('/wiki/Image:') and
-            not href.startswith('/wiki/Category:') and
-            not href.startswith('/wiki/Template:') and
-            not href.startswith('/wiki/User:') and
-            not href.startswith('/wiki/Talk:') and
-            not href.startswith('/wiki/List_of_') and
-            not href.startswith('/wiki/All_pages_') and
-            not href.startswith('/wiki/The_') and
-            text and
-            len(text) > 2 and
-            len(text) < 100 and  # Avoid very long text
-            not text.startswith('[') and
-            not text.endswith(']') and
-            not text.startswith('All pages') and
-            not text.startswith('All articles') and
-            not '(disambiguation)' in text.lower()):
-            
+        if (
+            href.startswith("/wiki/")
+            and not href.startswith("/wiki/Special:")
+            and not href.startswith("/wiki/Help:")
+            and not href.startswith("/wiki/Wikipedia:")
+            and not href.startswith("/wiki/File:")
+            and not href.startswith("/wiki/Image:")
+            and not href.startswith("/wiki/Category:")
+            and not href.startswith("/wiki/Template:")
+            and not href.startswith("/wiki/User:")
+            and not href.startswith("/wiki/Talk:")
+            and not href.startswith("/wiki/List_of_")
+            and not href.startswith("/wiki/All_pages_")
+            and not href.startswith("/wiki/The_")
+            and text
+            and len(text) > 2
+            and len(text) < 100  # Avoid very long text
+            and not text.startswith("[")
+            and not text.endswith("]")
+            and not text.startswith("All pages")
+            and not text.startswith("All articles")
+            and not "(disambiguation)" in text.lower()
+        ):
+
             # Extract the page title from the href
-            page_title = href.replace('/wiki/', '').replace('_', ' ')
-            
+            page_title = href.replace("/wiki/", "").replace("_", " ")
+
             # Skip if it's a disambiguation page itself
-            if '(disambiguation)' in page_title.lower():
+            if "(disambiguation)" in page_title.lower():
                 continue
-                
+
             # Add to options if not already present
-            if page_title not in [opt['title'] for opt in options]:
-                options.append({
-                    'title': page_title,
-                    'display_text': text,
-                    'url': href
-                })
-    
+            if page_title not in [opt["title"] for opt in options]:
+                options.append({"title": page_title, "display_text": text, "url": href})
+
     # Return top 10 options
     return options[:10]
 
@@ -1380,9 +1378,9 @@ def search_books():
         query = data.get("query", "").strip()
         if not query:
             return jsonify({"error": "Query is required", "status": "error"}), 400
-        
+
         search_results = search_wikipedia(query)
-        
+
         # If no search results, check for "did you mean" suggestions
         if not search_results:
             suggestions = search_wikipedia_with_suggestions(query)
@@ -1390,12 +1388,14 @@ def search_books():
                 # Convert suggestions to the same format as disambiguation options
                 suggestion_options = []
                 for suggestion in suggestions[:5]:  # Top 5 suggestions
-                    suggestion_options.append({
-                        'title': suggestion,
-                        'display_text': suggestion,
-                        'url': f'/wiki/{suggestion.replace(" ", "_")}'
-                    })
-                
+                    suggestion_options.append(
+                        {
+                            "title": suggestion,
+                            "display_text": suggestion,
+                            "url": f'/wiki/{suggestion.replace(" ", "_")}',
+                        }
+                    )
+
                 return jsonify(
                     {
                         "query": query,
@@ -1415,11 +1415,11 @@ def search_books():
                     ),
                     404,
                 )
-        
+
         # Get the best match (first result)
         best_match = search_results[0]["title"]
         html_content = get_wikipedia_content(best_match)
-        
+
         if not html_content:
             return (
                 jsonify(
@@ -1430,7 +1430,7 @@ def search_books():
                 ),
                 500,
             )
-        
+
         # Check if this is a disambiguation page
         if is_disambiguation_page(html_content):
             disambiguation_options = extract_disambiguation_options(html_content)
@@ -1443,7 +1443,7 @@ def search_books():
                     "status": "disambiguation",
                 }
             )
-        
+
         # Regular page - extract citations
         citations = extract_book_citations(html_content)
         return jsonify(
@@ -1468,7 +1468,7 @@ def search_specific_page():
         page_title = data.get("page_title", "").strip()
         if not page_title:
             return jsonify({"error": "Page title is required", "status": "error"}), 400
-        
+
         html_content = get_wikipedia_content(page_title)
         if not html_content:
             return (
@@ -1480,7 +1480,7 @@ def search_specific_page():
                 ),
                 500,
             )
-        
+
         citations = extract_book_citations(html_content)
         return jsonify(
             {

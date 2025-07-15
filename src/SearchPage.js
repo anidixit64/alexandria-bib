@@ -123,16 +123,8 @@ function SearchPage() {
             <div className="book-author">
               by {parsed.book_authors || 'Unknown'}
             </div>
-            {parsed.year && (
-              <div className="year-badge">
-                {parsed.year}
-              </div>
-            )}
-            {parsed.isbn && (
-              <div className="isbn-badge">
-                {parsed.isbn}
-              </div>
-            )}
+            {parsed.year && <div className="year-badge">{parsed.year}</div>}
+            {parsed.isbn && <div className="isbn-badge">{parsed.isbn}</div>}
           </div>
         </div>
       );
@@ -142,19 +134,9 @@ function SearchPage() {
           <div className="citation-number">{displayIndex + 1}</div>
           <div className="citation-content">
             <div className="book-title">{parsed.title || 'Unknown Title'}</div>
-            <div className="book-author">
-              by {parsed.authors || 'Unknown'}
-            </div>
-            {parsed.year && (
-              <div className="year-badge">
-                {parsed.year}
-              </div>
-            )}
-            {parsed.isbn && (
-              <div className="isbn-badge">
-                {parsed.isbn}
-              </div>
-            )}
+            <div className="book-author">by {parsed.authors || 'Unknown'}</div>
+            {parsed.year && <div className="year-badge">{parsed.year}</div>}
+            {parsed.isbn && <div className="isbn-badge">{parsed.isbn}</div>}
           </div>
         </div>
       );
@@ -185,7 +167,10 @@ function SearchPage() {
 
         if (response.ok) {
           // Check if this is a disambiguation or suggestions response
-          if (data.status === 'disambiguation' || data.status === 'suggestions') {
+          if (
+            data.status === 'disambiguation' ||
+            data.status === 'suggestions'
+          ) {
             setDisambiguationOptions(data.options);
           } else {
             setSearchResults(data);
@@ -296,7 +281,7 @@ function SearchPage() {
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
-          setDisambiguationOptions(null);
+    setDisambiguationOptions(null);
     setParsedCitations({});
     setSortDropdown(sortOptions[0]); // Reset sort to default
   };
