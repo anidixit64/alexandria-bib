@@ -8,6 +8,7 @@ function SearchPage() {
   const [searchResults, setSearchResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [disambiguationOptions, setDisambiguationOptions] = useState(null);
 
   const [toggleStructured, setToggleStructured] = useState(false);
   const [parsedCitations, setParsedCitations] = useState({});
@@ -180,6 +181,7 @@ function SearchPage() {
       setIsLoading(true);
       setError(null);
       setSearchResults(null);
+      setDisambiguationOptions(null);
       setParsedCitations({});
       setToggleStructured(false); // Reset toggle to off for new searches
       setSortDropdown(sortOptions[0]); // Reset sort to default
@@ -196,34 +198,39 @@ function SearchPage() {
         const data = await response.json();
 
         if (response.ok) {
-          setSearchResults(data);
+          // Check if this is a disambiguation response
+          if (data.status === 'disambiguation') {
+            setDisambiguationOptions(data.options);
+          } else {
+            setSearchResults(data);
 
-          // Immediately parse all citations in a single batch request
-          if (data.citations && data.citations.length > 0) {
-            try {
-              const parseResponse = await fetch(
-                'http://localhost:5001/api/parse/batch',
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({ citations: data.citations }),
+            // Immediately parse all citations in a single batch request
+            if (data.citations && data.citations.length > 0) {
+              try {
+                const parseResponse = await fetch(
+                  'http://localhost:5001/api/parse/batch',
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ citations: data.citations }),
+                  }
+                );
+                if (parseResponse.ok) {
+                  const parseData = await parseResponse.json();
+                  // parseData.results is an array of parsed citations
+                  const newParsedCitations = {};
+                  parseData.results.forEach((parsed, i) => {
+                    newParsedCitations[i] = parsed;
+                  });
+                  setParsedCitations(newParsedCitations);
+                } else {
+                  console.error('Failed to parse citations in batch.');
                 }
-              );
-              if (parseResponse.ok) {
-                const parseData = await parseResponse.json();
-                // parseData.results is an array of parsed citations
-                const newParsedCitations = {};
-                parseData.results.forEach((parsed, i) => {
-                  newParsedCitations[i] = parsed;
-                });
-                setParsedCitations(newParsedCitations);
-              } else {
-                console.error('Failed to parse citations in batch.');
+              } catch (err) {
+                console.error('Batch parse error:', err);
               }
-            } catch (err) {
-              console.error('Batch parse error:', err);
             }
           }
         } else {
@@ -242,9 +249,68 @@ function SearchPage() {
     navigate('/');
   };
 
+  const handleDisambiguationOption = async (option) => {
+    setIsLoading(true);
+    setError(null);
+    setDisambiguationOptions(null);
+
+    try {
+      const response = await fetch('http://localhost:5001/api/search/page', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page_title: option.title }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSearchResults(data);
+
+        // Immediately parse all citations in a single batch request
+        if (data.citations && data.citations.length > 0) {
+          try {
+            const parseResponse = await fetch(
+              'http://localhost:5001/api/parse/batch',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ citations: data.citations }),
+              }
+            );
+            if (parseResponse.ok) {
+              const parseData = await parseResponse.json();
+              // parseData.results is an array of parsed citations
+              const newParsedCitations = {};
+              parseData.results.forEach((parsed, i) => {
+                newParsedCitations[i] = parsed;
+              });
+              setParsedCitations(newParsedCitations);
+            } else {
+              console.error('Failed to parse citations in batch.');
+            }
+          } catch (err) {
+            console.error('Batch parse error:', err);
+          }
+        }
+      } else {
+        setError(data.error || 'Failed to fetch page content');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Disambiguation option error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const closeResults = () => {
     setSearchResults(null);
     setError(null);
+    setDisambiguationOptions(null);
     setParsedCitations({});
     setSortDropdown(sortOptions[0]); // Reset sort to default
   };
@@ -294,6 +360,30 @@ function SearchPage() {
             </button>
           </div>
         </form>
+
+        {/* Disambiguation Section */}
+        {disambiguationOptions && (
+          <div className="disambiguation-section">
+            <div className="disambiguation-header">
+              <h2>Did you mean:</h2>
+              <button className="close-button" onClick={closeResults}>
+                ×
+              </button>
+            </div>
+            <div className="disambiguation-options">
+              {disambiguationOptions.map((option, index) => (
+                <button
+                  key={index}
+                  className="disambiguation-option"
+                  onClick={() => handleDisambiguationOption(option)}
+                  disabled={isLoading}
+                >
+                  {option.display_text || option.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Results Section */}
         {searchResults && (
