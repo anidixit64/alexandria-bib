@@ -17,20 +17,21 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize Redis connection for caching
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+
 
 # User agent logging middleware
 @app.before_request
 def log_user_agent():
     """Log user agent information for incoming requests"""
-    user_agent = request.headers.get('User-Agent', 'Unknown')
+    user_agent = request.headers.get("User-Agent", "Unknown")
     ip_address = request.remote_addr
     endpoint = request.endpoint
     method = request.method
-    
+
     # Log user agent info (you can customize this format)
     print(f"[USER_AGENT] {method} {endpoint} - IP: {ip_address} - UA: {user_agent}")
-    
+
     # You could also store this in Redis for analytics if needed
     # log_data = {
     #     'timestamp': datetime.now().isoformat(),
@@ -39,6 +40,7 @@ def log_user_agent():
     #     'endpoint': endpoint,
     #     'method': method
     # }
+
 
 # --- API Usage Monitoring Middleware ---
 @app.before_request
@@ -56,21 +58,29 @@ def monitor_api_usage():
     except Exception as e:
         print(f"[USAGE MONITOR] Redis unavailable: {e}")
 
+
 @app.route("/api/usage/stats")
 def usage_stats():
     try:
         total = int(redis_client.get("usage:total") or 0)
         endpoints = [key for key in redis_client.scan_iter("usage:endpoint:*")]
-        endpoint_counts = {k.split("usage:endpoint:")[1]: int(redis_client.get(k) or 0) for k in endpoints}
-        return jsonify({
-            "total_requests": total,
-            "per_endpoint": endpoint_counts,
-            "status": "success"
-        })
+        endpoint_counts = {
+            k.split("usage:endpoint:")[1]: int(redis_client.get(k) or 0)
+            for k in endpoints
+        }
+        return jsonify(
+            {
+                "total_requests": total,
+                "per_endpoint": endpoint_counts,
+                "status": "success",
+            }
+        )
     except Exception as e:
         return jsonify({"error": "Usage stats unavailable", "status": "error"}), 503
 
+
 # --- Graceful Degradation for /api/search and /api/search/page ---
+
 
 def check_redis_available():
     try:
@@ -79,28 +89,42 @@ def check_redis_available():
     except Exception:
         return False
 
+
 # Patch search_books and search_specific_page to degrade gracefully
-old_search_books = app.view_functions['search_books']
-old_search_specific_page = app.view_functions['search_specific_page']
+old_search_books = app.view_functions["search_books"]
+old_search_specific_page = app.view_functions["search_specific_page"]
+
 
 def search_books_graceful():
     if not check_redis_available():
-        return jsonify({
-            "error": "Service is under heavy load. Please try again later.",
-            "status": "degraded"
-        }), 503
+        return (
+            jsonify(
+                {
+                    "error": "Service is under heavy load. Please try again later.",
+                    "status": "degraded",
+                }
+            ),
+            503,
+        )
     return old_search_books()
+
 
 def search_specific_page_graceful():
     if not check_redis_available():
-        return jsonify({
-            "error": "Service is under heavy load. Please try again later.",
-            "status": "degraded"
-        }), 503
+        return (
+            jsonify(
+                {
+                    "error": "Service is under heavy load. Please try again later.",
+                    "status": "degraded",
+                }
+            ),
+            503,
+        )
     return old_search_specific_page()
 
-app.view_functions['search_books'] = search_books_graceful
-app.view_functions['search_specific_page'] = search_specific_page_graceful
+
+app.view_functions["search_books"] = search_books_graceful
+app.view_functions["search_specific_page"] = search_specific_page_graceful
 
 
 # Configure rate limiting with Redis storage
@@ -108,7 +132,7 @@ limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     default_limits=["150 per minute"],
-    storage_uri="redis://localhost:6379"
+    storage_uri="redis://localhost:6379",
 )
 
 
@@ -149,7 +173,7 @@ def search_wikipedia(query):
 
     # Custom headers with proper user agent for Wikipedia API
     headers = {
-        'User-Agent': 'Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12'
+        "User-Agent": "Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12"
     }
 
     try:
@@ -178,7 +202,7 @@ def search_wikipedia_with_suggestions(query):
 
     # Custom headers with proper user agent for Wikipedia API
     headers = {
-        'User-Agent': 'Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12'
+        "User-Agent": "Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12"
     }
 
     try:
@@ -303,10 +327,10 @@ def extract_disambiguation_options(html_content):
 def get_wikipedia_content(page_title):
     """Get the HTML content of a Wikipedia page"""
     url = f"https://en.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
-    
+
     # Custom headers with proper user agent for Wikipedia API
     headers = {
-        'User-Agent': 'Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12'
+        "User-Agent": "Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12"
     }
 
     try:
@@ -1520,15 +1544,11 @@ def clear_cache():
         keys = redis_client.keys("alexandria:*")
         if keys:
             redis_client.delete(*keys)
-            return jsonify({
-                "message": f"Cleared {len(keys)} cached items",
-                "status": "success"
-            })
+            return jsonify(
+                {"message": f"Cleared {len(keys)} cached items", "status": "success"}
+            )
         else:
-            return jsonify({
-                "message": "No cached items found",
-                "status": "success"
-            })
+            return jsonify({"message": "No cached items found", "status": "success"})
     except Exception as e:
         print(f"Error clearing cache: {e}")
         return jsonify({"error": "Failed to clear cache", "status": "error"}), 500
@@ -1542,13 +1562,15 @@ def cache_stats():
         keys = redis_client.keys("alexandria:*")
         search_keys = redis_client.keys("alexandria:search:*")
         page_keys = redis_client.keys("alexandria:page:*")
-        
-        return jsonify({
-            "total_cached_items": len(keys),
-            "search_cached_items": len(search_keys),
-            "page_cached_items": len(page_keys),
-            "status": "success"
-        })
+
+        return jsonify(
+            {
+                "total_cached_items": len(keys),
+                "search_cached_items": len(search_keys),
+                "page_cached_items": len(page_keys),
+                "status": "success",
+            }
+        )
     except Exception as e:
         print(f"Error getting cache stats: {e}")
         return jsonify({"error": "Failed to get cache stats", "status": "error"}), 500
@@ -1557,52 +1579,52 @@ def cache_stats():
 @app.route("/api/user-agent/info", methods=["GET"])
 def user_agent_info():
     """Get information about the current request's user agent"""
-    user_agent = request.headers.get('User-Agent', 'Unknown')
+    user_agent = request.headers.get("User-Agent", "Unknown")
     ip_address = request.remote_addr
-    
+
     # Basic user agent parsing
     ua_info = {
         "user_agent": user_agent,
         "ip_address": ip_address,
         "endpoint": request.endpoint,
-        "method": request.method
+        "method": request.method,
     }
-    
+
     # Try to extract browser/OS info from user agent
     ua_lower = user_agent.lower()
-    
+
     # Browser detection
-    if 'chrome' in ua_lower:
-        ua_info['browser'] = 'Chrome'
-    elif 'firefox' in ua_lower:
-        ua_info['browser'] = 'Firefox'
-    elif 'safari' in ua_lower and 'chrome' not in ua_lower:
-        ua_info['browser'] = 'Safari'
-    elif 'edge' in ua_lower:
-        ua_info['browser'] = 'Edge'
-    elif 'opera' in ua_lower:
-        ua_info['browser'] = 'Opera'
+    if "chrome" in ua_lower:
+        ua_info["browser"] = "Chrome"
+    elif "firefox" in ua_lower:
+        ua_info["browser"] = "Firefox"
+    elif "safari" in ua_lower and "chrome" not in ua_lower:
+        ua_info["browser"] = "Safari"
+    elif "edge" in ua_lower:
+        ua_info["browser"] = "Edge"
+    elif "opera" in ua_lower:
+        ua_info["browser"] = "Opera"
     else:
-        ua_info['browser'] = 'Unknown'
-    
+        ua_info["browser"] = "Unknown"
+
     # OS detection
-    if 'windows' in ua_lower:
-        ua_info['os'] = 'Windows'
-    elif 'mac' in ua_lower:
-        ua_info['os'] = 'macOS'
-    elif 'linux' in ua_lower:
-        ua_info['os'] = 'Linux'
-    elif 'android' in ua_lower:
-        ua_info['os'] = 'Android'
-    elif 'ios' in ua_lower:
-        ua_info['os'] = 'iOS'
+    if "windows" in ua_lower:
+        ua_info["os"] = "Windows"
+    elif "mac" in ua_lower:
+        ua_info["os"] = "macOS"
+    elif "linux" in ua_lower:
+        ua_info["os"] = "Linux"
+    elif "android" in ua_lower:
+        ua_info["os"] = "Android"
+    elif "ios" in ua_lower:
+        ua_info["os"] = "iOS"
     else:
-        ua_info['os'] = 'Unknown'
-    
+        ua_info["os"] = "Unknown"
+
     # Check if it's a bot/crawler
-    bot_indicators = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python']
-    ua_info['is_bot'] = any(indicator in ua_lower for indicator in bot_indicators)
-    
+    bot_indicators = ["bot", "crawler", "spider", "scraper", "curl", "wget", "python"]
+    ua_info["is_bot"] = any(indicator in ua_lower for indicator in bot_indicators)
+
     return jsonify(ua_info)
 
 
@@ -1640,13 +1662,16 @@ def search_books():
                         }
                     )
 
-                set_cached_result(cache_key, {
-                    "query": query,
-                    "page_title": None,
-                    "suggestions": True,
-                    "options": suggestion_options,
-                    "status": "suggestions",
-                })
+                set_cached_result(
+                    cache_key,
+                    {
+                        "query": query,
+                        "page_title": None,
+                        "suggestions": True,
+                        "options": suggestion_options,
+                        "status": "suggestions",
+                    },
+                )
 
                 return jsonify(
                     {
@@ -1658,10 +1683,13 @@ def search_books():
                     }
                 )
             else:
-                set_cached_result(cache_key, {
-                    "error": f'No Wikipedia page found for "{query}"',
-                    "status": "error",
-                })
+                set_cached_result(
+                    cache_key,
+                    {
+                        "error": f'No Wikipedia page found for "{query}"',
+                        "status": "error",
+                    },
+                )
                 return (
                     jsonify(
                         {
@@ -1677,10 +1705,13 @@ def search_books():
         html_content = get_wikipedia_content(best_match)
 
         if not html_content:
-            set_cached_result(cache_key, {
-                "error": f'Could not fetch content for "{best_match}"',
-                "status": "error",
-            })
+            set_cached_result(
+                cache_key,
+                {
+                    "error": f'Could not fetch content for "{best_match}"',
+                    "status": "error",
+                },
+            )
             return (
                 jsonify(
                     {
@@ -1694,13 +1725,16 @@ def search_books():
         # Check if this is a disambiguation page
         if is_disambiguation_page(html_content):
             disambiguation_options = extract_disambiguation_options(html_content)
-            set_cached_result(cache_key, {
-                "query": query,
-                "page_title": best_match,
-                "disambiguation": True,
-                "options": disambiguation_options,
-                "status": "disambiguation",
-            })
+            set_cached_result(
+                cache_key,
+                {
+                    "query": query,
+                    "page_title": best_match,
+                    "disambiguation": True,
+                    "options": disambiguation_options,
+                    "status": "disambiguation",
+                },
+            )
             return jsonify(
                 {
                     "query": query,
@@ -1713,13 +1747,16 @@ def search_books():
 
         # Regular page - extract citations
         citations = extract_book_citations(html_content)
-        set_cached_result(cache_key, {
-            "query": query,
-            "page_title": best_match,
-            "citations": citations,
-            "count": len(citations),
-            "status": "success",
-        })
+        set_cached_result(
+            cache_key,
+            {
+                "query": query,
+                "page_title": best_match,
+                "citations": citations,
+                "count": len(citations),
+                "status": "success",
+            },
+        )
         return jsonify(
             {
                 "query": query,
@@ -1747,17 +1784,20 @@ def search_specific_page():
         # Check cache first
         cache_key = get_cache_key(page_title, "page")
         cached_result = get_cached_result(cache_key)
-        
+
         if cached_result:
             print(f"Serving cached result for page: {page_title}")
             return jsonify(cached_result)
 
         html_content = get_wikipedia_content(page_title)
         if not html_content:
-            set_cached_result(cache_key, {
-                "error": f'Could not fetch content for "{page_title}"',
-                "status": "error",
-            })
+            set_cached_result(
+                cache_key,
+                {
+                    "error": f'Could not fetch content for "{page_title}"',
+                    "status": "error",
+                },
+            )
             return (
                 jsonify(
                     {
@@ -1775,10 +1815,10 @@ def search_specific_page():
             "count": len(citations),
             "status": "success",
         }
-        
+
         # Cache the result
         set_cached_result(cache_key, result)
-        
+
         return jsonify(result)
     except Exception as e:
         print(f"Error in search_specific_page: {e}")
@@ -1862,11 +1902,16 @@ def ip_whitelist():
 @app.errorhandler(429)
 def ratelimit_handler(e):
     """Handle rate limit exceeded errors"""
-    return jsonify({
-        "error": "Rate limit exceeded. Please try again later.",
-        "status": "error",
-        "retry_after": e.retry_after if hasattr(e, 'retry_after') else 60
-    }), 429
+    return (
+        jsonify(
+            {
+                "error": "Rate limit exceeded. Please try again later.",
+                "status": "error",
+                "retry_after": e.retry_after if hasattr(e, "retry_after") else 60,
+            }
+        ),
+        429,
+    )
 
 
 if __name__ == "__main__":
