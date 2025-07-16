@@ -88,13 +88,31 @@ def check_redis_available():
         return False
 
 
-# Configure rate limiting with Redis storage
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["150 per minute"],
-    storage_uri="redis://localhost:6379",
-)
+# --- Rate Limiting: Use Redis if available, else fallback to in-memory (for CI/dev) ---
+def is_redis_available():
+    try:
+        r = redis.Redis(host="localhost", port=6379, db=0)
+        r.ping()
+        return True
+    except Exception:
+        return False
+
+USE_REDIS_LIMITER = is_redis_available() and not os.environ.get("DISABLE_RATE_LIMITER")
+
+if USE_REDIS_LIMITER:
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["150 per minute"],
+        storage_uri="redis://localhost:6379",
+    )
+else:
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["150 per minute"],
+        storage_uri="memory://",
+    )
 
 
 def get_cache_key(query, cache_type="search"):
