@@ -664,6 +664,9 @@ def type_1_parser(citation):
             "foreign languages press",
             "twenty-first century books",
             "dover",
+            "st. martin's press",
+            "w. w. norton",
+            "univ. press of kentucky",
         ]
         # Find comma followed by publisher-like word or ISBN/retrieved/archived
         comma_pat = re.compile(
@@ -728,7 +731,8 @@ def type_1_parser(citation):
                     r"academic press|london & new york|london|new york|washington|"
                     r"regnery|world bank|fisheries society|publicaffairs|dover|"
                     r"twenty-first century books|motilal banarsidass|archana verma|"
-                    r"foreign languages press)",
+                    r"foreign languages press|st\. martin's press|w\. w\. norton|"
+                    r"univ\. press of kentucky)",
                 ]
 
                 is_publisher = False
