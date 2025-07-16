@@ -636,6 +636,60 @@ class TestSpecificCitations(unittest.TestCase):
         self.assertNotIn("(2015)", result["remaining_text"])
         self.assertNotIn("ISBN", result["remaining_text"])
 
+    def test_trende_lost_majority_citation(self):
+        """Test parsing Trende citation with page numbers and dash in title"""
+        from app import type_1_parser
+
+        test_citation = "Trende, Sean (2012). The Lost Majority: Why the Future of Government Is Up for Grabs–and Who Will Take It. St. Martin's Press. pp. xxii–xxviii. ISBN 978-0230116467"
+        result = type_1_parser(test_citation)
+
+        self.assertEqual(result["authors"], "Trende, Sean")
+        self.assertEqual(result["year"], "2012")
+        self.assertEqual(
+            result["title"],
+            "The Lost Majority: Why the Future of Government Is Up for Grabs–and Who Will Take It",
+        )
+        self.assertEqual(result["isbn"], "978-0230116467")
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("St. Martin's Press", result["remaining_text"])
+        self.assertNotIn("St. Martin's Press", result["title"])
+
+    def test_brunvand_baby_train_citation(self):
+        """Test parsing Brunvand citation with page range and dash"""
+        from app import type_1_parser
+
+        test_citation = "Brunvand, Jan Harold (1994). The Baby Train and Other Lusty Urban Legends. W. W. Norton & Company. pp. 98–. ISBN 978-0-393-31208-9"
+        result = type_1_parser(test_citation)
+
+        self.assertEqual(result["authors"], "Brunvand, Jan Harold")
+        self.assertEqual(result["year"], "1994")
+        self.assertEqual(
+            result["title"],
+            "The Baby Train and Other Lusty Urban Legends",
+        )
+        self.assertEqual(result["isbn"], "978-0-393-31208-9")
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("W. W. Norton & Company", result["remaining_text"])
+        self.assertNotIn("W. W. Norton & Company", result["title"])
+
+    def test_ledford_back_talk_citation(self):
+        """Test parsing Ledford citation with University Press format"""
+        from app import type_1_parser
+
+        test_citation = "Ledford, Katherine (2000). Back Talk from Appalachia: Confronting Stereotypes. Univ. Press of Kentucky. ISBN 978-0-8131-9001-3"
+        result = type_1_parser(test_citation)
+
+        self.assertEqual(result["authors"], "Ledford, Katherine")
+        self.assertEqual(result["year"], "2000")
+        self.assertEqual(
+            result["title"],
+            "Back Talk from Appalachia: Confronting Stereotypes",
+        )
+        self.assertEqual(result["isbn"], "978-0-8131-9001-3")
+        # Check that publisher info is in remaining_text, not in title
+        self.assertIn("Univ. Press of Kentucky", result["remaining_text"])
+        self.assertNotIn("Univ. Press of Kentucky", result["title"])
+
 
 class TestTasmaniaCitations(unittest.TestCase):
     """Test specific Tasmania citations that should be parsed correctly"""
