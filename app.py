@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, current_app
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -10,8 +10,6 @@ import redis
 import json
 import hashlib
 import time
-from datetime import datetime
-from functools import wraps
 
 app = Flask(__name__)
 CORS(app)
@@ -50,13 +48,13 @@ def monitor_api_usage():
     now = int(time.time())
     try:
         # Increment global and per-endpoint counters
-        redis_client.incr(f"usage:total")
+        redis_client.incr("usage:total")
         redis_client.incr(f"usage:endpoint:{endpoint}")
         redis_client.incr(f"usage:ip:{ip}:endpoint:{endpoint}")
         # Track recent requests for trend analysis (set expiry for rolling window)
         redis_client.setex(f"usage:recent:{now}", 120, 1)
-    except Exception as e:
-        print(f"[USAGE MONITOR] Redis unavailable: {e}")
+    except Exception:
+        print("[USAGE MONITOR] Redis unavailable")
 
 
 @app.route("/api/usage/stats")
@@ -75,7 +73,7 @@ def usage_stats():
                 "status": "success",
             }
         )
-    except Exception as e:
+    except Exception:
         return jsonify({"error": "Usage stats unavailable", "status": "error"}), 503
 
 
@@ -173,7 +171,11 @@ def search_wikipedia(query):
 
     # Custom headers with proper user agent for Wikipedia API
     headers = {
-        "User-Agent": "Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12"
+        "User-Agent": (
+            "Alexandria-Bib/1.0 "
+            "(https://github.com/your-repo/alexandria-bib; your-email@example.com) "
+            "Python/3.12"
+        )
     }
 
     try:
@@ -202,7 +204,11 @@ def search_wikipedia_with_suggestions(query):
 
     # Custom headers with proper user agent for Wikipedia API
     headers = {
-        "User-Agent": "Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12"
+        "User-Agent": (
+            "Alexandria-Bib/1.0 "
+            "(https://github.com/your-repo/alexandria-bib; your-email@example.com) "
+            "Python/3.12"
+        )
     }
 
     try:
@@ -330,7 +336,11 @@ def get_wikipedia_content(page_title):
 
     # Custom headers with proper user agent for Wikipedia API
     headers = {
-        "User-Agent": "Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12"
+        "User-Agent": (
+            "Alexandria-Bib/1.0 "
+            "(https://github.com/your-repo/alexandria-bib; your-email@example.com) "
+            "Python/3.12"
+        )
     }
 
     try:
