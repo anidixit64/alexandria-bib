@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -7,6 +9,14 @@ import re
 
 app = Flask(__name__)
 CORS(app)
+
+# Configure rate limiting with Redis storage
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["150 per minute"],
+    storage_uri="redis://localhost:6379"
+)
 
 
 def search_wikipedia(query):
@@ -508,7 +518,6 @@ def type_1_parser(citation):
             "dover",
         ]
         # Find comma followed by publisher-like word or ISBN/retrieved/archived
-        # Also handle location:publisher format (e.g., "Sydney: Allen & Unwin")
         comma_pat = re.compile(
             r",\s*([A-Za-z& ]+)(?:\s*:\s*[A-Za-z& ]+)?", re.IGNORECASE
         )
@@ -516,19 +525,10 @@ def type_1_parser(citation):
         comma_stop = None
         if comma_match:
             next_word = comma_match.group(1).strip().lower()
-            # Check if this looks like a location:publisher pattern
-            location_publisher_pattern = (
-                r",\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*:\s*([A-Z][a-zA-Z\s&]+)"
-            )
-            loc_pub_match = re.search(location_publisher_pattern, text_after_date)
-            if loc_pub_match:
-                comma_stop = loc_pub_match.start()
-            else:
-                # Check against publisher keywords
-                for kw in publisher_keywords:
-                    if next_word.startswith(kw):
-                        comma_stop = comma_match.start()
-                        break
+            for kw in publisher_keywords:
+                if next_word.startswith(kw):
+                    comma_stop = comma_match.start()
+                    break
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived'
         # But don't stop at parentheses that are part of the title
         # Also be smarter about periods in names (like "Ulysses S. Grant")
@@ -1341,6 +1341,7 @@ def determine_parser_type(citation):
 
 
 @app.route("/api/parse/batch", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_batch():
     """Parse multiple citations in a single request"""
     data = request.get_json()
@@ -1361,13 +1362,7 @@ def parse_batch():
         else:
             parsed = type_1_parser(citation)
         results.append(parsed)
-
-    response = jsonify({"results": results})
-    # Add cache-busting headers
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    return jsonify({"results": results})
 
 
 @app.route("/")
@@ -1386,6 +1381,7 @@ def health_check():
 
 
 @app.route("/api/search", methods=["POST"])
+@limiter.limit("150 per minute")
 def search_books():
     """Search for books based on a topic using Wikipedia"""
     try:
@@ -1461,7 +1457,7 @@ def search_books():
 
         # Regular page - extract citations
         citations = extract_book_citations(html_content)
-        response = jsonify(
+        return jsonify(
             {
                 "query": query,
                 "page_title": best_match,
@@ -1470,17 +1466,13 @@ def search_books():
                 "status": "success",
             }
         )
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
     except Exception as e:
         print(f"Error in search_books: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/search/page", methods=["POST"])
+@limiter.limit("150 per minute")
 def search_specific_page():
     """Search for books on a specific Wikipedia page"""
     try:
@@ -1516,6 +1508,7 @@ def search_specific_page():
 
 
 @app.route("/api/parse/type1", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type1():
     """Parse Type I citations using the type_1_parser function"""
     try:
@@ -1525,18 +1518,14 @@ def parse_type1():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_1_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type1: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type2", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type2():
     """Parse Type II citations using the type_2_parser function"""
     try:
@@ -1546,18 +1535,14 @@ def parse_type2():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_2_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type2: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type3", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type3():
     """Parse Type III citations using the type_3_parser function"""
     try:
@@ -1567,18 +1552,14 @@ def parse_type3():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_3_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type3: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type5", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type5():
     """Parse Type V citations using the type_5_parser function"""
     try:
@@ -1588,15 +1569,26 @@ def parse_type5():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_5_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type5: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+
+@limiter.request_filter
+def ip_whitelist():
+    """Allow health check endpoint to bypass rate limiting"""
+    return request.endpoint == "health_check"
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Handle rate limit exceeded errors"""
+    return jsonify({
+        "error": "Rate limit exceeded. Please try again later.",
+        "status": "error",
+        "retry_after": e.retry_after if hasattr(e, 'retry_after') else 60
+    }), 429
 
 
 if __name__ == "__main__":
