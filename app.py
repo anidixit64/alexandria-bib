@@ -1921,16 +1921,8 @@ def wrap_with_graceful_degradation():
         old_search_books = app.view_functions["search_books"]
 
         def search_books_graceful():
-            if not check_redis_available():
-                return (
-                    jsonify(
-                        {
-                            "error": "Service busy. Please try again later.",
-                            "status": "degraded",
-                        }
-                    ),
-                    503,
-                )
+            # Only return 503 if there's actual high load, not just Redis unavailability
+            # For now, let the original function handle Redis unavailability gracefully
             return old_search_books()
 
         app.view_functions["search_books"] = search_books_graceful
@@ -1939,17 +1931,11 @@ def wrap_with_graceful_degradation():
         old_search_specific_page = app.view_functions["search_specific_page"]
 
         def search_specific_page_graceful():
-            if not check_redis_available():
-                return (
-                    jsonify(
-                        {
-                            "error": "Service busy. Please try again later.",
-                            "status": "degraded",
-                        }
-                    ),
-                    503,
-                )
+            # Only return 503 if there's actual high load, not just Redis unavailability
+            # For now, let the original function handle Redis unavailability gracefully
             return old_search_specific_page()
+
+        app.view_functions["search_specific_page"] = search_specific_page_graceful
 
 
 # Apply graceful degradation wrapping
