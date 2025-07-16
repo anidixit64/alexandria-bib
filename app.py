@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, current_app
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -9,12 +9,99 @@ import re
 import redis
 import json
 import hashlib
+import time
+from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
 CORS(app)
 
 # Initialize Redis connection for caching
 redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+# User agent logging middleware
+@app.before_request
+def log_user_agent():
+    """Log user agent information for incoming requests"""
+    user_agent = request.headers.get('User-Agent', 'Unknown')
+    ip_address = request.remote_addr
+    endpoint = request.endpoint
+    method = request.method
+    
+    # Log user agent info (you can customize this format)
+    print(f"[USER_AGENT] {method} {endpoint} - IP: {ip_address} - UA: {user_agent}")
+    
+    # You could also store this in Redis for analytics if needed
+    # log_data = {
+    #     'timestamp': datetime.now().isoformat(),
+    #     'ip': ip_address,
+    #     'user_agent': user_agent,
+    #     'endpoint': endpoint,
+    #     'method': method
+    # }
+
+# --- API Usage Monitoring Middleware ---
+@app.before_request
+def monitor_api_usage():
+    endpoint = request.endpoint or "unknown"
+    ip = request.remote_addr or "unknown"
+    now = int(time.time())
+    try:
+        # Increment global and per-endpoint counters
+        redis_client.incr(f"usage:total")
+        redis_client.incr(f"usage:endpoint:{endpoint}")
+        redis_client.incr(f"usage:ip:{ip}:endpoint:{endpoint}")
+        # Track recent requests for trend analysis (set expiry for rolling window)
+        redis_client.setex(f"usage:recent:{now}", 120, 1)
+    except Exception as e:
+        print(f"[USAGE MONITOR] Redis unavailable: {e}")
+
+@app.route("/api/usage/stats")
+def usage_stats():
+    try:
+        total = int(redis_client.get("usage:total") or 0)
+        endpoints = [key for key in redis_client.scan_iter("usage:endpoint:*")]
+        endpoint_counts = {k.split("usage:endpoint:")[1]: int(redis_client.get(k) or 0) for k in endpoints}
+        return jsonify({
+            "total_requests": total,
+            "per_endpoint": endpoint_counts,
+            "status": "success"
+        })
+    except Exception as e:
+        return jsonify({"error": "Usage stats unavailable", "status": "error"}), 503
+
+# --- Graceful Degradation for /api/search and /api/search/page ---
+
+def check_redis_available():
+    try:
+        redis_client.ping()
+        return True
+    except Exception:
+        return False
+
+# Patch search_books and search_specific_page to degrade gracefully
+old_search_books = app.view_functions['search_books']
+old_search_specific_page = app.view_functions['search_specific_page']
+
+def search_books_graceful():
+    if not check_redis_available():
+        return jsonify({
+            "error": "Service is under heavy load. Please try again later.",
+            "status": "degraded"
+        }), 503
+    return old_search_books()
+
+def search_specific_page_graceful():
+    if not check_redis_available():
+        return jsonify({
+            "error": "Service is under heavy load. Please try again later.",
+            "status": "degraded"
+        }), 503
+    return old_search_specific_page()
+
+app.view_functions['search_books'] = search_books_graceful
+app.view_functions['search_specific_page'] = search_specific_page_graceful
+
 
 # Configure rate limiting with Redis storage
 limiter = Limiter(
@@ -60,8 +147,13 @@ def search_wikipedia(query):
         "srlimit": 10,  # Increased to get more results for disambiguation
     }
 
+    # Custom headers with proper user agent for Wikipedia API
+    headers = {
+        'User-Agent': 'Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12'
+    }
+
     try:
-        response = requests.get(search_url, params=params)
+        response = requests.get(search_url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
 
@@ -84,8 +176,13 @@ def search_wikipedia_with_suggestions(query):
         "namespace": 0,
     }
 
+    # Custom headers with proper user agent for Wikipedia API
+    headers = {
+        'User-Agent': 'Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12'
+    }
+
     try:
-        response = requests.get(search_url, params=params)
+        response = requests.get(search_url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
 
@@ -206,9 +303,14 @@ def extract_disambiguation_options(html_content):
 def get_wikipedia_content(page_title):
     """Get the HTML content of a Wikipedia page"""
     url = f"https://en.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
+    
+    # Custom headers with proper user agent for Wikipedia API
+    headers = {
+        'User-Agent': 'Alexandria-Bib/1.0 (https://github.com/your-repo/alexandria-bib; your-email@example.com) Python/3.12'
+    }
 
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.text
     except Exception as e:
@@ -1450,6 +1552,58 @@ def cache_stats():
     except Exception as e:
         print(f"Error getting cache stats: {e}")
         return jsonify({"error": "Failed to get cache stats", "status": "error"}), 500
+
+
+@app.route("/api/user-agent/info", methods=["GET"])
+def user_agent_info():
+    """Get information about the current request's user agent"""
+    user_agent = request.headers.get('User-Agent', 'Unknown')
+    ip_address = request.remote_addr
+    
+    # Basic user agent parsing
+    ua_info = {
+        "user_agent": user_agent,
+        "ip_address": ip_address,
+        "endpoint": request.endpoint,
+        "method": request.method
+    }
+    
+    # Try to extract browser/OS info from user agent
+    ua_lower = user_agent.lower()
+    
+    # Browser detection
+    if 'chrome' in ua_lower:
+        ua_info['browser'] = 'Chrome'
+    elif 'firefox' in ua_lower:
+        ua_info['browser'] = 'Firefox'
+    elif 'safari' in ua_lower and 'chrome' not in ua_lower:
+        ua_info['browser'] = 'Safari'
+    elif 'edge' in ua_lower:
+        ua_info['browser'] = 'Edge'
+    elif 'opera' in ua_lower:
+        ua_info['browser'] = 'Opera'
+    else:
+        ua_info['browser'] = 'Unknown'
+    
+    # OS detection
+    if 'windows' in ua_lower:
+        ua_info['os'] = 'Windows'
+    elif 'mac' in ua_lower:
+        ua_info['os'] = 'macOS'
+    elif 'linux' in ua_lower:
+        ua_info['os'] = 'Linux'
+    elif 'android' in ua_lower:
+        ua_info['os'] = 'Android'
+    elif 'ios' in ua_lower:
+        ua_info['os'] = 'iOS'
+    else:
+        ua_info['os'] = 'Unknown'
+    
+    # Check if it's a bot/crawler
+    bot_indicators = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python']
+    ua_info['is_bot'] = any(indicator in ua_lower for indicator in bot_indicators)
+    
+    return jsonify(ua_info)
 
 
 @app.route("/api/search", methods=["POST"])
