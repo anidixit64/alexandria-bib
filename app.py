@@ -6,9 +6,15 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import re
+import redis
+import json
+import hashlib
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize Redis connection for caching
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 # Configure rate limiting with Redis storage
 limiter = Limiter(
@@ -17,6 +23,30 @@ limiter = Limiter(
     default_limits=["150 per minute"],
     storage_uri="redis://localhost:6379"
 )
+
+
+def get_cache_key(query, cache_type="search"):
+    """Generate a cache key for the given query and cache type"""
+    return f"alexandria:{cache_type}:{hashlib.md5(query.lower().encode()).hexdigest()}"
+
+
+def get_cached_result(cache_key):
+    """Get cached result from Redis"""
+    try:
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
+    except Exception as e:
+        print(f"Error getting cached result: {e}")
+    return None
+
+
+def set_cached_result(cache_key, data, ttl=3600):
+    """Set cached result in Redis with TTL (default 1 hour)"""
+    try:
+        redis_client.setex(cache_key, ttl, json.dumps(data))
+    except Exception as e:
+        print(f"Error setting cached result: {e}")
 
 
 def search_wikipedia(query):
@@ -1380,6 +1410,48 @@ def health_check():
     return jsonify({"status": "healthy", "service": "alexandria-backend"})
 
 
+@app.route("/api/cache/clear", methods=["POST"])
+def clear_cache():
+    """Clear all cached results"""
+    try:
+        # Get all keys with the alexandria prefix
+        keys = redis_client.keys("alexandria:*")
+        if keys:
+            redis_client.delete(*keys)
+            return jsonify({
+                "message": f"Cleared {len(keys)} cached items",
+                "status": "success"
+            })
+        else:
+            return jsonify({
+                "message": "No cached items found",
+                "status": "success"
+            })
+    except Exception as e:
+        print(f"Error clearing cache: {e}")
+        return jsonify({"error": "Failed to clear cache", "status": "error"}), 500
+
+
+@app.route("/api/cache/stats", methods=["GET"])
+def cache_stats():
+    """Get cache statistics"""
+    try:
+        # Get all keys with the alexandria prefix
+        keys = redis_client.keys("alexandria:*")
+        search_keys = redis_client.keys("alexandria:search:*")
+        page_keys = redis_client.keys("alexandria:page:*")
+        
+        return jsonify({
+            "total_cached_items": len(keys),
+            "search_cached_items": len(search_keys),
+            "page_cached_items": len(page_keys),
+            "status": "success"
+        })
+    except Exception as e:
+        print(f"Error getting cache stats: {e}")
+        return jsonify({"error": "Failed to get cache stats", "status": "error"}), 500
+
+
 @app.route("/api/search", methods=["POST"])
 @limiter.limit("150 per minute")
 def search_books():
@@ -1389,6 +1461,13 @@ def search_books():
         query = data.get("query", "").strip()
         if not query:
             return jsonify({"error": "Query is required", "status": "error"}), 400
+
+        cache_key = get_cache_key(query)
+        cached_result = get_cached_result(cache_key)
+
+        if cached_result:
+            print(f"Serving cached result for query: {query}")
+            return jsonify(cached_result)
 
         search_results = search_wikipedia(query)
 
@@ -1407,6 +1486,14 @@ def search_books():
                         }
                     )
 
+                set_cached_result(cache_key, {
+                    "query": query,
+                    "page_title": None,
+                    "suggestions": True,
+                    "options": suggestion_options,
+                    "status": "suggestions",
+                })
+
                 return jsonify(
                     {
                         "query": query,
@@ -1417,6 +1504,10 @@ def search_books():
                     }
                 )
             else:
+                set_cached_result(cache_key, {
+                    "error": f'No Wikipedia page found for "{query}"',
+                    "status": "error",
+                })
                 return (
                     jsonify(
                         {
@@ -1432,6 +1523,10 @@ def search_books():
         html_content = get_wikipedia_content(best_match)
 
         if not html_content:
+            set_cached_result(cache_key, {
+                "error": f'Could not fetch content for "{best_match}"',
+                "status": "error",
+            })
             return (
                 jsonify(
                     {
@@ -1445,6 +1540,13 @@ def search_books():
         # Check if this is a disambiguation page
         if is_disambiguation_page(html_content):
             disambiguation_options = extract_disambiguation_options(html_content)
+            set_cached_result(cache_key, {
+                "query": query,
+                "page_title": best_match,
+                "disambiguation": True,
+                "options": disambiguation_options,
+                "status": "disambiguation",
+            })
             return jsonify(
                 {
                     "query": query,
@@ -1457,6 +1559,13 @@ def search_books():
 
         # Regular page - extract citations
         citations = extract_book_citations(html_content)
+        set_cached_result(cache_key, {
+            "query": query,
+            "page_title": best_match,
+            "citations": citations,
+            "count": len(citations),
+            "status": "success",
+        })
         return jsonify(
             {
                 "query": query,
@@ -1481,8 +1590,20 @@ def search_specific_page():
         if not page_title:
             return jsonify({"error": "Page title is required", "status": "error"}), 400
 
+        # Check cache first
+        cache_key = get_cache_key(page_title, "page")
+        cached_result = get_cached_result(cache_key)
+        
+        if cached_result:
+            print(f"Serving cached result for page: {page_title}")
+            return jsonify(cached_result)
+
         html_content = get_wikipedia_content(page_title)
         if not html_content:
+            set_cached_result(cache_key, {
+                "error": f'Could not fetch content for "{page_title}"',
+                "status": "error",
+            })
             return (
                 jsonify(
                     {
@@ -1494,14 +1615,17 @@ def search_specific_page():
             )
 
         citations = extract_book_citations(html_content)
-        return jsonify(
-            {
-                "page_title": page_title,
-                "citations": citations,
-                "count": len(citations),
-                "status": "success",
-            }
-        )
+        result = {
+            "page_title": page_title,
+            "citations": citations,
+            "count": len(citations),
+            "status": "success",
+        }
+        
+        # Cache the result
+        set_cached_result(cache_key, result)
+        
+        return jsonify(result)
     except Exception as e:
         print(f"Error in search_specific_page: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
