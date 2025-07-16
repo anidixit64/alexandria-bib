@@ -1906,7 +1906,7 @@ def wrap_with_graceful_degradation():
                 return (
                     jsonify(
                         {
-                            "error": "Service is under heavy load. Please try again later.",
+                            "error": "Service busy. Please try again later.",
                             "status": "degraded",
                         }
                     ),
@@ -1924,15 +1924,13 @@ def wrap_with_graceful_degradation():
                 return (
                     jsonify(
                         {
-                            "error": "Service is under heavy load. Please try again later.",
+                            "error": "Service busy. Please try again later.",
                             "status": "degraded",
                         }
                     ),
                     503,
                 )
             return old_search_specific_page()
-
-        app.view_functions["search_specific_page"] = search_specific_page_graceful
 
 
 # Apply graceful degradation wrapping
