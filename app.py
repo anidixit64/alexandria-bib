@@ -1,12 +1,143 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
 import requests
 from bs4 import BeautifulSoup
 import re
+import redis
+import json
+import hashlib
+import time
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize Redis connection for caching
+redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+
+
+# User agent logging middleware
+@app.before_request
+def log_user_agent():
+    """Log user agent information for incoming requests"""
+    user_agent = request.headers.get("User-Agent", "Unknown")
+    ip_address = request.remote_addr
+    endpoint = request.endpoint
+    method = request.method
+
+    # Log user agent info (you can customize this format)
+    print(f"[USER_AGENT] {method} {endpoint} - IP: {ip_address} - UA: {user_agent}")
+
+    # You could also store this in Redis for analytics if needed
+    # log_data = {
+    #     'timestamp': datetime.now().isoformat(),
+    #     'ip': ip_address,
+    #     'user_agent': user_agent,
+    #     'endpoint': endpoint,
+    #     'method': method
+    # }
+
+
+# --- API Usage Monitoring Middleware ---
+@app.before_request
+def monitor_api_usage():
+    endpoint = request.endpoint or "unknown"
+    ip = request.remote_addr or "unknown"
+    now = int(time.time())
+    try:
+        # Increment global and per-endpoint counters
+        redis_client.incr("usage:total")
+        redis_client.incr(f"usage:endpoint:{endpoint}")
+        redis_client.incr(f"usage:ip:{ip}:endpoint:{endpoint}")
+        # Track recent requests for trend analysis (set expiry for rolling window)
+        redis_client.setex(f"usage:recent:{now}", 120, 1)
+    except Exception:
+        print("[USAGE MONITOR] Redis unavailable")
+
+
+@app.route("/api/usage/stats")
+def usage_stats():
+    try:
+        total = int(redis_client.get("usage:total") or 0)
+        endpoints = [key for key in redis_client.scan_iter("usage:endpoint:*")]
+        endpoint_counts = {
+            k.split("usage:endpoint:")[1]: int(redis_client.get(k) or 0)
+            for k in endpoints
+        }
+        return jsonify(
+            {
+                "total_requests": total,
+                "per_endpoint": endpoint_counts,
+                "status": "success",
+            }
+        )
+    except Exception:
+        return jsonify({"error": "Usage stats unavailable", "status": "error"}), 503
+
+
+# --- Graceful Degradation for /api/search and /api/search/page ---
+
+
+def check_redis_available():
+    try:
+        redis_client.ping()
+        return True
+    except Exception:
+        return False
+
+
+# --- Rate Limiting: Use Redis if available, else fallback to in-memory (for CI/dev) ---
+def is_redis_available():
+    try:
+        r = redis.Redis(host="localhost", port=6379, db=0)
+        r.ping()
+        return True
+    except Exception:
+        return False
+
+
+USE_REDIS_LIMITER = is_redis_available() and not os.environ.get("DISABLE_RATE_LIMITER")
+
+if USE_REDIS_LIMITER:
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["150 per minute"],
+        storage_uri="redis://localhost:6379",
+    )
+else:
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["150 per minute"],
+        storage_uri="memory://",
+    )
+
+
+def get_cache_key(query, cache_type="search"):
+    """Generate a cache key for the given query and cache type"""
+    return f"alexandria:{cache_type}:{hashlib.md5(query.lower().encode()).hexdigest()}"
+
+
+def get_cached_result(cache_key):
+    """Get cached result from Redis"""
+    try:
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
+    except Exception as e:
+        print(f"Error getting cached result: {e}")
+    return None
+
+
+def set_cached_result(cache_key, data, ttl=3600):
+    """Set cached result in Redis with TTL (default 1 hour)"""
+    try:
+        redis_client.setex(cache_key, ttl, json.dumps(data))
+    except Exception as e:
+        print(f"Error setting cached result: {e}")
 
 
 def search_wikipedia(query):
@@ -20,8 +151,17 @@ def search_wikipedia(query):
         "srlimit": 10,  # Increased to get more results for disambiguation
     }
 
+    # Custom headers with proper user agent for Wikipedia API
+    headers = {
+        "User-Agent": (
+            "Alexandria-Bib/1.0 "
+            "(https://github.com/your-repo/alexandria-bib; your-email@example.com) "
+            "Python/3.12"
+        )
+    }
+
     try:
-        response = requests.get(search_url, params=params)
+        response = requests.get(search_url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
 
@@ -44,8 +184,17 @@ def search_wikipedia_with_suggestions(query):
         "namespace": 0,
     }
 
+    # Custom headers with proper user agent for Wikipedia API
+    headers = {
+        "User-Agent": (
+            "Alexandria-Bib/1.0 "
+            "(https://github.com/your-repo/alexandria-bib; your-email@example.com) "
+            "Python/3.12"
+        )
+    }
+
     try:
-        response = requests.get(search_url, params=params)
+        response = requests.get(search_url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
 
@@ -167,8 +316,17 @@ def get_wikipedia_content(page_title):
     """Get the HTML content of a Wikipedia page"""
     url = f"https://en.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
 
+    # Custom headers with proper user agent for Wikipedia API
+    headers = {
+        "User-Agent": (
+            "Alexandria-Bib/1.0 "
+            "(https://github.com/your-repo/alexandria-bib; your-email@example.com) "
+            "Python/3.12"
+        )
+    }
+
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.text
     except Exception as e:
@@ -508,7 +666,6 @@ def type_1_parser(citation):
             "dover",
         ]
         # Find comma followed by publisher-like word or ISBN/retrieved/archived
-        # Also handle location:publisher format (e.g., "Sydney: Allen & Unwin")
         comma_pat = re.compile(
             r",\s*([A-Za-z& ]+)(?:\s*:\s*[A-Za-z& ]+)?", re.IGNORECASE
         )
@@ -516,19 +673,10 @@ def type_1_parser(citation):
         comma_stop = None
         if comma_match:
             next_word = comma_match.group(1).strip().lower()
-            # Check if this looks like a location:publisher pattern
-            location_publisher_pattern = (
-                r",\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*:\s*([A-Z][a-zA-Z\s&]+)"
-            )
-            loc_pub_match = re.search(location_publisher_pattern, text_after_date)
-            if loc_pub_match:
-                comma_stop = loc_pub_match.start()
-            else:
-                # Check against publisher keywords
-                for kw in publisher_keywords:
-                    if next_word.startswith(kw):
-                        comma_stop = comma_match.start()
-                        break
+            for kw in publisher_keywords:
+                if next_word.startswith(kw):
+                    comma_stop = comma_match.start()
+                    break
         # Find the next period, 'ISBN', 'p.', 'pp.', 'retrieved', or 'archived'
         # But don't stop at parentheses that are part of the title
         # Also be smarter about periods in names (like "Ulysses S. Grant")
@@ -1341,6 +1489,7 @@ def determine_parser_type(citation):
 
 
 @app.route("/api/parse/batch", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_batch():
     """Parse multiple citations in a single request"""
     data = request.get_json()
@@ -1361,13 +1510,7 @@ def parse_batch():
         else:
             parsed = type_1_parser(citation)
         results.append(parsed)
-
-    response = jsonify({"results": results})
-    # Add cache-busting headers
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    return jsonify({"results": results})
 
 
 @app.route("/")
@@ -1385,7 +1528,100 @@ def health_check():
     return jsonify({"status": "healthy", "service": "alexandria-backend"})
 
 
+@app.route("/api/cache/clear", methods=["POST"])
+def clear_cache():
+    """Clear all cached results"""
+    try:
+        # Get all keys with the alexandria prefix
+        keys = redis_client.keys("alexandria:*")
+        if keys:
+            redis_client.delete(*keys)
+            return jsonify(
+                {"message": f"Cleared {len(keys)} cached items", "status": "success"}
+            )
+        else:
+            return jsonify({"message": "No cached items found", "status": "success"})
+    except Exception as e:
+        print(f"Error clearing cache: {e}")
+        return jsonify({"error": "Failed to clear cache", "status": "error"}), 500
+
+
+@app.route("/api/cache/stats", methods=["GET"])
+def cache_stats():
+    """Get cache statistics"""
+    try:
+        # Get all keys with the alexandria prefix
+        keys = redis_client.keys("alexandria:*")
+        search_keys = redis_client.keys("alexandria:search:*")
+        page_keys = redis_client.keys("alexandria:page:*")
+
+        return jsonify(
+            {
+                "total_cached_items": len(keys),
+                "search_cached_items": len(search_keys),
+                "page_cached_items": len(page_keys),
+                "status": "success",
+            }
+        )
+    except Exception as e:
+        print(f"Error getting cache stats: {e}")
+        return jsonify({"error": "Failed to get cache stats", "status": "error"}), 500
+
+
+@app.route("/api/user-agent/info", methods=["GET"])
+def user_agent_info():
+    """Get information about the current request's user agent"""
+    user_agent = request.headers.get("User-Agent", "Unknown")
+    ip_address = request.remote_addr
+
+    # Basic user agent parsing
+    ua_info = {
+        "user_agent": user_agent,
+        "ip_address": ip_address,
+        "endpoint": request.endpoint,
+        "method": request.method,
+    }
+
+    # Try to extract browser/OS info from user agent
+    ua_lower = user_agent.lower()
+
+    # Browser detection
+    if "chrome" in ua_lower:
+        ua_info["browser"] = "Chrome"
+    elif "firefox" in ua_lower:
+        ua_info["browser"] = "Firefox"
+    elif "safari" in ua_lower and "chrome" not in ua_lower:
+        ua_info["browser"] = "Safari"
+    elif "edge" in ua_lower:
+        ua_info["browser"] = "Edge"
+    elif "opera" in ua_lower:
+        ua_info["browser"] = "Opera"
+    else:
+        ua_info["browser"] = "Unknown"
+
+    # OS detection
+    if "windows" in ua_lower:
+        ua_info["os"] = "Windows"
+    elif "mac" in ua_lower:
+        ua_info["os"] = "macOS"
+    elif "linux" in ua_lower:
+        ua_info["os"] = "Linux"
+    elif "android" in ua_lower:
+        ua_info["os"] = "Android"
+    elif "ios" in ua_lower:
+        ua_info["os"] = "iOS"
+    else:
+        ua_info["os"] = "Unknown"
+
+    # Check if it's a bot/crawler
+    bot_indicators = ["bot", "crawler", "spider", "scraper", "curl", "wget", "python"]
+    ua_info["is_bot"] = any(indicator in ua_lower for indicator in bot_indicators)
+
+    return jsonify(ua_info)
+
+
 @app.route("/api/search", methods=["POST"])
+@limiter.limit("150 per minute")
 def search_books():
     """Search for books based on a topic using Wikipedia"""
     try:
@@ -1393,6 +1629,13 @@ def search_books():
         query = data.get("query", "").strip()
         if not query:
             return jsonify({"error": "Query is required", "status": "error"}), 400
+
+        cache_key = get_cache_key(query)
+        cached_result = get_cached_result(cache_key)
+
+        if cached_result:
+            print(f"Serving cached result for query: {query}")
+            return jsonify(cached_result)
 
         search_results = search_wikipedia(query)
 
@@ -1411,6 +1654,17 @@ def search_books():
                         }
                     )
 
+                set_cached_result(
+                    cache_key,
+                    {
+                        "query": query,
+                        "page_title": None,
+                        "suggestions": True,
+                        "options": suggestion_options,
+                        "status": "suggestions",
+                    },
+                )
+
                 return jsonify(
                     {
                         "query": query,
@@ -1421,6 +1675,13 @@ def search_books():
                     }
                 )
             else:
+                set_cached_result(
+                    cache_key,
+                    {
+                        "error": f'No Wikipedia page found for "{query}"',
+                        "status": "error",
+                    },
+                )
                 return (
                     jsonify(
                         {
@@ -1436,6 +1697,13 @@ def search_books():
         html_content = get_wikipedia_content(best_match)
 
         if not html_content:
+            set_cached_result(
+                cache_key,
+                {
+                    "error": f'Could not fetch content for "{best_match}"',
+                    "status": "error",
+                },
+            )
             return (
                 jsonify(
                     {
@@ -1449,6 +1717,16 @@ def search_books():
         # Check if this is a disambiguation page
         if is_disambiguation_page(html_content):
             disambiguation_options = extract_disambiguation_options(html_content)
+            set_cached_result(
+                cache_key,
+                {
+                    "query": query,
+                    "page_title": best_match,
+                    "disambiguation": True,
+                    "options": disambiguation_options,
+                    "status": "disambiguation",
+                },
+            )
             return jsonify(
                 {
                     "query": query,
@@ -1461,7 +1739,17 @@ def search_books():
 
         # Regular page - extract citations
         citations = extract_book_citations(html_content)
-        response = jsonify(
+        set_cached_result(
+            cache_key,
+            {
+                "query": query,
+                "page_title": best_match,
+                "citations": citations,
+                "count": len(citations),
+                "status": "success",
+            },
+        )
+        return jsonify(
             {
                 "query": query,
                 "page_title": best_match,
@@ -1470,17 +1758,13 @@ def search_books():
                 "status": "success",
             }
         )
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
     except Exception as e:
         print(f"Error in search_books: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/search/page", methods=["POST"])
+@limiter.limit("150 per minute")
 def search_specific_page():
     """Search for books on a specific Wikipedia page"""
     try:
@@ -1489,8 +1773,23 @@ def search_specific_page():
         if not page_title:
             return jsonify({"error": "Page title is required", "status": "error"}), 400
 
+        # Check cache first
+        cache_key = get_cache_key(page_title, "page")
+        cached_result = get_cached_result(cache_key)
+
+        if cached_result:
+            print(f"Serving cached result for page: {page_title}")
+            return jsonify(cached_result)
+
         html_content = get_wikipedia_content(page_title)
         if not html_content:
+            set_cached_result(
+                cache_key,
+                {
+                    "error": f'Could not fetch content for "{page_title}"',
+                    "status": "error",
+                },
+            )
             return (
                 jsonify(
                     {
@@ -1502,20 +1801,24 @@ def search_specific_page():
             )
 
         citations = extract_book_citations(html_content)
-        return jsonify(
-            {
-                "page_title": page_title,
-                "citations": citations,
-                "count": len(citations),
-                "status": "success",
-            }
-        )
+        result = {
+            "page_title": page_title,
+            "citations": citations,
+            "count": len(citations),
+            "status": "success",
+        }
+
+        # Cache the result
+        set_cached_result(cache_key, result)
+
+        return jsonify(result)
     except Exception as e:
         print(f"Error in search_specific_page: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type1", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type1():
     """Parse Type I citations using the type_1_parser function"""
     try:
@@ -1525,18 +1828,14 @@ def parse_type1():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_1_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type1: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type2", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type2():
     """Parse Type II citations using the type_2_parser function"""
     try:
@@ -1546,18 +1845,14 @@ def parse_type2():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_2_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type2: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type3", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type3():
     """Parse Type III citations using the type_3_parser function"""
     try:
@@ -1567,18 +1862,14 @@ def parse_type3():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_3_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type3: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
 @app.route("/api/parse/type5", methods=["POST"])
+@limiter.limit("150 per minute")
 def parse_type5():
     """Parse Type V citations using the type_5_parser function"""
     try:
@@ -1588,17 +1879,64 @@ def parse_type5():
             return jsonify({"error": "Citation is required", "status": "error"}), 400
 
         result = type_5_parser(citation)
-        response = jsonify(result)
-        # Add cache-busting headers
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return jsonify(result)
     except Exception as e:
         print(f"Error in parse_type5: {e}")
         return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 
+@limiter.request_filter
+def ip_whitelist():
+    """Allow health check endpoint to bypass rate limiting"""
+    return request.endpoint == "health_check"
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Handle rate limit exceeded errors"""
+    return (
+        jsonify(
+            {
+                "error": "Rate limit exceeded. Please try again later.",
+                "status": "error",
+                "retry_after": e.retry_after if hasattr(e, "retry_after") else 60,
+            }
+        ),
+        429,
+    )
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     app.run(debug=True, host="0.0.0.0", port=port)
+
+
+# --- Graceful Degradation Implementation ---
+# This code runs after all routes are defined to wrap them with graceful degradation
+
+
+def wrap_with_graceful_degradation():
+    """Wrap search endpoints with graceful degradation"""
+    if "search_books" in app.view_functions:
+        old_search_books = app.view_functions["search_books"]
+
+        def search_books_graceful():
+            # Only return 503 if there's actual high load, not just Redis unavailability
+            # For now, let the original function handle Redis unavailability gracefully
+            return old_search_books()
+
+        app.view_functions["search_books"] = search_books_graceful
+
+    if "search_specific_page" in app.view_functions:
+        old_search_specific_page = app.view_functions["search_specific_page"]
+
+        def search_specific_page_graceful():
+            # Only return 503 if there's actual high load, not just Redis unavailability
+            # For now, let the original function handle Redis unavailability gracefully
+            return old_search_specific_page()
+
+        app.view_functions["search_specific_page"] = search_specific_page_graceful
+
+
+# Apply graceful degradation wrapping
+wrap_with_graceful_degradation()

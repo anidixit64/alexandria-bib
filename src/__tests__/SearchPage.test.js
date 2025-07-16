@@ -76,16 +76,13 @@ describe('SearchPage Component', () => {
     fireEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringMatching(/^http:\/\/localhost:5001\/api\/search\?t=\d+$/),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query: 'test query' }),
-        }
-      );
+      expect(fetch).toHaveBeenCalledWith('http://localhost:5001/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: 'test query' }),
+      });
     });
   });
 
