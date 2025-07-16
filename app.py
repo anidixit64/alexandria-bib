@@ -88,43 +88,6 @@ def check_redis_available():
         return False
 
 
-# Patch search_books and search_specific_page to degrade gracefully
-old_search_books = app.view_functions["search_books"]
-old_search_specific_page = app.view_functions["search_specific_page"]
-
-
-def search_books_graceful():
-    if not check_redis_available():
-        return (
-            jsonify(
-                {
-                    "error": "Service is under heavy load. Please try again later.",
-                    "status": "degraded",
-                }
-            ),
-            503,
-        )
-    return old_search_books()
-
-
-def search_specific_page_graceful():
-    if not check_redis_available():
-        return (
-            jsonify(
-                {
-                    "error": "Service is under heavy load. Please try again later.",
-                    "status": "degraded",
-                }
-            ),
-            503,
-        )
-    return old_search_specific_page()
-
-
-app.view_functions["search_books"] = search_books_graceful
-app.view_functions["search_specific_page"] = search_specific_page_graceful
-
-
 # Configure rate limiting with Redis storage
 limiter = Limiter(
     app=app,
@@ -1927,3 +1890,49 @@ def ratelimit_handler(e):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     app.run(debug=True, host="0.0.0.0", port=port)
+
+
+# --- Graceful Degradation Implementation ---
+# This code runs after all routes are defined to wrap them with graceful degradation
+
+def wrap_with_graceful_degradation():
+    """Wrap search endpoints with graceful degradation"""
+    if "search_books" in app.view_functions:
+        old_search_books = app.view_functions["search_books"]
+        
+        def search_books_graceful():
+            if not check_redis_available():
+                return (
+                    jsonify(
+                        {
+                            "error": "Service is under heavy load. Please try again later.",
+                            "status": "degraded",
+                        }
+                    ),
+                    503,
+                )
+            return old_search_books()
+        
+        app.view_functions["search_books"] = search_books_graceful
+    
+    if "search_specific_page" in app.view_functions:
+        old_search_specific_page = app.view_functions["search_specific_page"]
+        
+        def search_specific_page_graceful():
+            if not check_redis_available():
+                return (
+                    jsonify(
+                        {
+                            "error": "Service is under heavy load. Please try again later.",
+                            "status": "degraded",
+                        }
+                    ),
+                    503,
+                )
+            return old_search_specific_page()
+        
+        app.view_functions["search_specific_page"] = search_specific_page_graceful
+
+
+# Apply graceful degradation wrapping
+wrap_with_graceful_degradation()
