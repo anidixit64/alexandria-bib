@@ -1895,11 +1895,12 @@ if __name__ == "__main__":
 # --- Graceful Degradation Implementation ---
 # This code runs after all routes are defined to wrap them with graceful degradation
 
+
 def wrap_with_graceful_degradation():
     """Wrap search endpoints with graceful degradation"""
     if "search_books" in app.view_functions:
         old_search_books = app.view_functions["search_books"]
-        
+
         def search_books_graceful():
             if not check_redis_available():
                 return (
@@ -1912,12 +1913,12 @@ def wrap_with_graceful_degradation():
                     503,
                 )
             return old_search_books()
-        
+
         app.view_functions["search_books"] = search_books_graceful
-    
+
     if "search_specific_page" in app.view_functions:
         old_search_specific_page = app.view_functions["search_specific_page"]
-        
+
         def search_specific_page_graceful():
             if not check_redis_available():
                 return (
@@ -1930,7 +1931,7 @@ def wrap_with_graceful_degradation():
                     503,
                 )
             return old_search_specific_page()
-        
+
         app.view_functions["search_specific_page"] = search_specific_page_graceful
 
 
