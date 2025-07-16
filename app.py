@@ -97,6 +97,7 @@ def is_redis_available():
     except Exception:
         return False
 
+
 USE_REDIS_LIMITER = is_redis_available() and not os.environ.get("DISABLE_RATE_LIMITER")
 
 if USE_REDIS_LIMITER:
