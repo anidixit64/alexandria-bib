@@ -62,6 +62,36 @@ class TestBearsSearch(unittest.TestCase):
             self.assertIsInstance(citation, str)
             self.assertGreater(len(citation), 10)  # Should have meaningful content
 
+    def test_ownership_citation_filtering(self):
+        """Test that citations starting with 'per statement of ownership' are filtered out"""
+        from app import extract_book_citations
+        
+        # Create a mock HTML content with ownership citations
+        mock_html = """
+        <html>
+        <body>
+        <ol>
+            <li>Per statement of ownership, dated October 2, 1939, published in Marvel Mystery Comics #4 (Feb. 1940); reprinted in Marvel Masterworks: Golden Age Marvel Comics Volume 1 (Marvel Comics, 2004, ISBN 0-7851-1609-5)</li>
+            <li>Brunner, Bernd (2007). Bears: A Brief History. Yale University Press. ISBN 978-0-300-12299-2</li>
+            <li>Per statement of ownership, dated January 15, 1940, published in Detective Comics #20 (Mar. 1940); reprinted in DC Archives: Batman Volume 1 (DC Comics, 1997, ISBN 1-56389-342-8)</li>
+        </ol>
+        </body>
+        </html>
+        """
+        
+        citations = extract_book_citations(mock_html)
+        
+        # Check that ownership citations are filtered out
+        for citation in citations:
+            self.assertFalse(
+                citation.lower().startswith("per statement of ownership"),
+                f"Ownership citation should be filtered out: {citation}"
+            )
+        
+        # Check that valid citations are still included
+        valid_citations = [c for c in citations if "Brunner, Bernd" in c]
+        self.assertGreater(len(valid_citations), 0, "Valid citations should still be included")
+
 
 class TestType1Parser(unittest.TestCase):
     """Test the type_1_parser function for standard citations with parenthetical dates"""

@@ -479,11 +479,17 @@ def extract_book_citations(html_content):
             unique_citations.append(citation)
             seen.add(citation)
 
+    # Filter out citations that start with "per statement of ownership"
+    ownership_filtered_citations = []
+    for citation in unique_citations:
+        if not citation.lower().startswith("per statement of ownership"):
+            ownership_filtered_citations.append(citation)
+
     # Filter to only include citations with dates in parentheses
     filtered_citations = []
     date_pattern = r"\([^)]*(?:\d{4}|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)[^)]*\)"
 
-    for citation in unique_citations:
+    for citation in ownership_filtered_citations:
         if re.search(date_pattern, citation, re.IGNORECASE):
             filtered_citations.append(citation)
 
